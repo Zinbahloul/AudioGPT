@@ -49,8 +49,7 @@ class GenerSpeechTask(FastSpeech2Task):
         emo_embed = sample.get('emo_embed')
         output = model(txt_tokens, mel2ph=mel2ph, ref_mel2ph=mel2ph, ref_mel2word=mel2word, spk_embed=spk_embed, emo_embed=emo_embed,
                        ref_mels=target, f0=f0, uv=uv, tgt_mels=target, global_steps=self.global_step, infer=False)
-        losses = {}
-        losses['postflow'] = output['postflow']
+        losses = {'postflow': output['postflow']}
         if self.global_step > hparams['forcing']:
             losses['gloss'] = (output['gloss_utter'] + output['gloss_ph'] + output['gloss_word']) / 3
         if self.global_step > hparams['vq_start']:
@@ -64,14 +63,10 @@ class GenerSpeechTask(FastSpeech2Task):
             self.add_pitch_loss(output, sample, losses)
         output['select_attn'] = select_attn(output['attn_ph'])
 
-        if not return_output:
-            return losses
-        else:
-            return losses, output
+        return losses if not return_output else (losses, output)
 
     def validation_step(self, sample, batch_idx):
-        outputs = {}
-        outputs['losses'] = {}
+        outputs = {'losses': {}}
         outputs['losses'], model_out = self.run_model(self.model, sample, return_output=True)
         outputs['total_loss'] = sum(outputs['losses'].values())
         outputs['nsamples'] = sample['nsamples']
@@ -79,7 +74,7 @@ class GenerSpeechTask(FastSpeech2Task):
         mel_out = self.model.out2mel(model_out['mel_out'])
         outputs = utils.tensors_to_scalars(outputs)
         if self.global_step % hparams['valid_infer_interval'] == 0 \
-                and batch_idx < hparams['num_valid_plots']:
+                    and batch_idx < hparams['num_valid_plots']:
             vmin = hparams['mel_vmin']
             vmax = hparams['mel_vmax']
             self.plot_mel(batch_idx, sample['mels'], mel_out)

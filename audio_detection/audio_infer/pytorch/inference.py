@@ -27,7 +27,7 @@ def audio_tagging(args):
     checkpoint_path = args.checkpoint_path
     audio_path = args.audio_path
     device = torch.device('cuda') if args.cuda and torch.cuda.is_available() else torch.device('cpu')
-    
+
     classes_num = config.classes_num
     labels = config.labels
 
@@ -36,18 +36,18 @@ def audio_tagging(args):
     model = Model(sample_rate=sample_rate, window_size=window_size, 
         hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax, 
         classes_num=classes_num)
-    
+
     checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint['model'])
 
     # Parallel
     if 'cuda' in str(device):
         model.to(device)
-        print('GPU number: {}'.format(torch.cuda.device_count()))
+        print(f'GPU number: {torch.cuda.device_count()}')
         model = torch.nn.DataParallel(model)
     else:
         print('Using CPU.')
-    
+
     # Load audio
     (waveform, _) = librosa.core.load(audio_path, sr=sample_rate, mono=True)
 
@@ -72,7 +72,7 @@ def audio_tagging(args):
     # Print embedding
     if 'embedding' in batch_output_dict.keys():
         embedding = batch_output_dict['embedding'].data.cpu().numpy()[0]
-        print('embedding: {}'.format(embedding.shape))
+        print(f'embedding: {embedding.shape}')
 
     return clipwise_output, labels
 
@@ -98,7 +98,7 @@ def sound_event_detection(args):
     frames_per_second = sample_rate // hop_size
 
     # Paths
-    fig_path = os.path.join('results', '{}.png'.format(get_filename(audio_path)))
+    fig_path = os.path.join('results', f'{get_filename(audio_path)}.png')
     create_folder(os.path.dirname(fig_path))
 
     # Model
@@ -106,17 +106,17 @@ def sound_event_detection(args):
     model = Model(sample_rate=sample_rate, window_size=window_size, 
         hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax, 
         classes_num=classes_num)
-    
+
     checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint['model'])
 
     # Parallel
-    print('GPU number: {}'.format(torch.cuda.device_count()))
+    print(f'GPU number: {torch.cuda.device_count()}')
     model = torch.nn.DataParallel(model)
 
     if 'cuda' in str(device):
         model.to(device)
-    
+
     # Load audio
     (waveform, _) = librosa.core.load(audio_path, sr=sample_rate, mono=True)
 
@@ -131,13 +131,14 @@ def sound_event_detection(args):
     framewise_output = batch_output_dict['framewise_output'].data.cpu().numpy()[0]
     """(time_steps, classes_num)"""
 
-    print('Sound event detection result (time_steps x classes_num): {}'.format(
-        framewise_output.shape))
+    print(
+        f'Sound event detection result (time_steps x classes_num): {framewise_output.shape}'
+    )
 
     sorted_indexes = np.argsort(np.max(framewise_output, axis=0))[::-1]
 
     top_k = 10  # Show top results
-    top_result_mat = framewise_output[:, sorted_indexes[0 : top_k]]    
+    top_result_mat = framewise_output[:, sorted_indexes[:top_k]]
     """(time_steps, top_k)"""
 
     # Plot result    
@@ -153,14 +154,14 @@ def sound_event_detection(args):
     axs[1].xaxis.set_ticks(np.arange(0, frames_num, frames_per_second))
     axs[1].xaxis.set_ticklabels(np.arange(0, frames_num / frames_per_second))
     axs[1].yaxis.set_ticks(np.arange(0, top_k))
-    axs[1].yaxis.set_ticklabels(np.array(labels)[sorted_indexes[0 : top_k]])
+    axs[1].yaxis.set_ticklabels(np.array(labels)[sorted_indexes[:top_k]])
     axs[1].yaxis.grid(color='k', linestyle='solid', linewidth=0.3, alpha=0.3)
     axs[1].set_xlabel('Seconds')
     axs[1].xaxis.set_ticks_position('bottom')
 
     plt.tight_layout()
     plt.savefig(fig_path)
-    print('Save sound event detection visualization to {}'.format(fig_path))
+    print(f'Save sound event detection visualization to {fig_path}')
 
     return framewise_output, labels
 

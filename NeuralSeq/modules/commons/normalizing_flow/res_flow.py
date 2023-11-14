@@ -50,7 +50,7 @@ class ResFlow(nn.Module):
                  nn_type='wn'):
         super().__init__()
         self.flows = nn.ModuleList()
-        for i in range(n_flow_steps):
+        for _ in range(n_flow_steps):
             self.flows.append(
                 CouplingLayer(c_in, hidden_size, kernel_size, n_flow_layers, c_in_g=c_cond, nn_type=nn_type))
             self.flows.append(FlipLayer())

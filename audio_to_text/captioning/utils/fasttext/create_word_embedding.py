@@ -19,7 +19,9 @@ def create_embedding(caption_file: str,
                      output: str,
                      **fasttext_kwargs):
     caption_df = pd.read_json(caption_file)
-    caption_df["tokens"] = caption_df["tokens"].apply(lambda x: ["<start>"] + [token for token in x] + ["<end>"])
+    caption_df["tokens"] = caption_df["tokens"].apply(
+        lambda x: ["<start>"] + list(x) + ["<end>"]
+    )
 
     sentences = list(caption_df["tokens"].values)
     vocabulary = torch.load(vocab_file, map_location="cpu")
@@ -28,19 +30,19 @@ def create_embedding(caption_file: str,
     model = FastText(size=embed_size, min_count=1, **fasttext_kwargs)
     model.build_vocab(sentences=sentences)
     model.train(sentences=sentences, total_examples=len(sentences), epochs=epochs)
-    
+
     word_embeddings = np.zeros((len(vocabulary), embed_size))
-    
+
     with tqdm(total=len(vocabulary), ascii=True) as pbar:
         for word, idx in vocabulary.word2idx.items():
-            if word == "<pad>" or word == "<unk>":
+            if word in ["<pad>", "<unk>"]:
                 continue
             word_embeddings[idx] = model.wv[word]
             pbar.update()
 
     np.save(output, word_embeddings)
 
-    print("Finish writing fasttext embeddings to " + output)
+    print(f"Finish writing fasttext embeddings to {output}")
 
 
 if __name__ == "__main__":

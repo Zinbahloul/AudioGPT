@@ -90,7 +90,7 @@ class RnnFcDecoder(RnnDecoder):
 
         word = word.to(fc_emb.device)
         embed = self.in_dropout(self.word_embedding(word))
-        
+
         p_fc_emb = self.fc_proj(fc_emb)
         # embed: [N, T, embed_size]
         embed = torch.cat((embed, p_fc_emb), dim=-1)
@@ -98,13 +98,7 @@ class RnnFcDecoder(RnnDecoder):
         out, state = self.model(embed, state)
         # out: [N, T, hs], states: [num_layers * num_dire, N, hs]
         logits = self.classifier(out)
-        output = {
-            "state": state,
-            "embeds": out,
-            "logits": logits
-        }
-
-        return output
+        return {"state": state, "embeds": out, "logits": logits}
 
 
 class Seq2SeqAttention(nn.Module):
@@ -242,13 +236,12 @@ class BahAttnDecoder(RnnDecoder):
 
         out, state = self.model(rnn_input, state)
 
-        output = {
+        return {
             "state": state,
             "embed": out,
             "logit": self.classifier(out),
-            "attn_weight": attn_weight
+            "attn_weight": attn_weight,
         }
-        return output
 
 
 class BahAttnDecoder2(RnnDecoder):
@@ -300,13 +293,12 @@ class BahAttnDecoder2(RnnDecoder):
 
         out, state = self.model(rnn_input, state)
 
-        output = {
+        return {
             "state": state,
             "embed": out,
             "logit": self.classifier(out),
-            "attn_weight": attn_weight
+            "attn_weight": attn_weight,
         }
-        return output
 
 
 class ConditionalBahAttnDecoder(RnnDecoder):
@@ -363,13 +355,12 @@ class ConditionalBahAttnDecoder(RnnDecoder):
 
         out, state = self.model(rnn_input, state)
 
-        output = {
+        return {
             "state": state,
             "embed": out,
             "logit": self.classifier(out),
-            "attn_weight": attn_weight
+            "attn_weight": attn_weight,
         }
-        return output
 
 
 class StructBahAttnDecoder(RnnDecoder):
@@ -424,13 +415,12 @@ class StructBahAttnDecoder(RnnDecoder):
 
         out, state = self.model(rnn_input, state)
 
-        output = {
+        return {
             "state": state,
             "embed": out,
             "logit": self.classifier(out),
-            "attn_weight": attn_weight
+            "attn_weight": attn_weight,
         }
-        return output
 
 
 class StyleBahAttnDecoder(RnnDecoder):
@@ -482,13 +472,12 @@ class StyleBahAttnDecoder(RnnDecoder):
 
         out, state = self.model(rnn_input, state)
 
-        output = {
+        return {
             "state": state,
             "embed": out,
             "logit": self.classifier(out),
-            "attn_weight": attn_weight
+            "attn_weight": attn_weight,
         }
-        return output
 
 
 class BahAttnDecoder3(RnnDecoder):
@@ -543,13 +532,12 @@ class BahAttnDecoder3(RnnDecoder):
 
         out, state = self.model(rnn_input, state)
 
-        output = {
+        return {
             "state": state,
             "embed": out,
             "logit": self.classifier(out),
-            "attn_weight": attn_weight
+            "attn_weight": attn_weight,
         }
-        return output
 
 
 class SpecificityBahAttnDecoder(RnnDecoder):
@@ -602,13 +590,12 @@ class SpecificityBahAttnDecoder(RnnDecoder):
 
         out, state = self.model(rnn_input, state)
 
-        output = {
+        return {
             "state": state,
             "embed": out,
             "logit": self.classifier(out),
-            "attn_weight": attn_weight
+            "attn_weight": attn_weight,
         }
-        return output
 
 
 class TransformerDecoder(BaseDecoder):
@@ -644,7 +631,11 @@ class TransformerDecoder(BaseDecoder):
 
     def generate_square_subsequent_mask(self, max_length):
         mask = (torch.triu(torch.ones(max_length, max_length)) == 1).transpose(0, 1)
-        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+        mask = (
+            mask.float()
+            .masked_fill(mask == 0, float('-inf'))
+            .masked_fill(mask == 1, 0.0)
+        )
         return mask
 
     def forward(self, input_dict):

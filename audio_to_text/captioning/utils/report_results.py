@@ -12,14 +12,14 @@ args = parser.parse_args()
 scores = {}
 for path in args.input:
     with open(path, "r") as reader:
-        for line in reader.readlines():
+        for line in reader:
             metric, score = line.strip().split(": ")
             score = float(score)
             if metric not in scores:
                 scores[metric] = []
             scores[metric].append(score)
 
-if len(scores) == 0:
+if not scores:
     print("No experiment directory found, wrong path?")
     exit(1)
 

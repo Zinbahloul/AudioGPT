@@ -209,7 +209,7 @@ class BaseSVSInfer:
         midi_dur = torch.FloatTensor(item['midi_dur'])[None, :hparams['max_frames']].to(self.device)
         is_slur = torch.LongTensor(item['is_slur'])[None, :hparams['max_frames']].to(self.device)
 
-        batch = {
+        return {
             'item_name': item_names,
             'text': text,
             'ph': ph,
@@ -218,9 +218,8 @@ class BaseSVSInfer:
             'spk_ids': spk_ids,
             'pitch_midi': pitch_midi,
             'midi_dur': midi_dur,
-            'is_slur': is_slur
+            'is_slur': is_slur,
         }
-        return batch
 
     def postprocess_output(self, output):
         return output
@@ -238,7 +237,7 @@ class BaseSVSInfer:
         infer_ins = cls(hparams)
         out = infer_ins.infer_once(inp)
         os.makedirs('infer_out', exist_ok=True)
-        save_wav(out, f'infer_out/example_out.wav', hparams['audio_sample_rate'])
+        save_wav(out, 'infer_out/example_out.wav', hparams['audio_sample_rate'])
 
 
 # if __name__ == '__main__':

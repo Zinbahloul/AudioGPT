@@ -33,11 +33,11 @@ class PortaSpeechAdvTask(FastSpeech2Task):
 
         self.gen_params = [p for p in self.model.parameters() if p.requires_grad]
         self.dp_params = [p for k, p in self.model.named_parameters() if (('dur_predictor' in k) and p.requires_grad)]
-        self.gen_params_except_dp = [p for k, p in self.model.named_parameters() if (('dur_predictor' not in k) and p.requires_grad)]        
+        self.gen_params_except_dp = [p for k, p in self.model.named_parameters() if (('dur_predictor' not in k) and p.requires_grad)]
         self.bert_params = [p for k, p in self.model.named_parameters() if (('bert' in k) and p.requires_grad)]
         self.gen_params_except_bert_and_dp = [p for k, p in self.model.named_parameters() if ('dur_predictor' not in k) and ('bert' not in k) and p.requires_grad ]
 
-        self.use_bert = True if len(self.bert_params) > 0 else False
+        self.use_bert = len(self.bert_params) > 0
 
     def build_disc_model(self):
         disc_win_num = hparams['disc_win_num']
@@ -66,7 +66,7 @@ class PortaSpeechAdvTask(FastSpeech2Task):
             #######################
             loss_output, model_out = self.run_model(sample, infer=False)
             self.model_out_gt = self.model_out = \
-                {k: v.detach() for k, v in model_out.items() if isinstance(v, torch.Tensor)}
+                    {k: v.detach() for k, v in model_out.items() if isinstance(v, torch.Tensor)}
             if disc_start:
                 mel_p = model_out['mel_out']
                 if hasattr(self.model, 'out2mel'):
@@ -79,25 +79,25 @@ class PortaSpeechAdvTask(FastSpeech2Task):
                 if pc_ is not None:
                     loss_output['ac'] = self.mse_loss_fn(pc_, pc_.new_ones(pc_.size()))
                     loss_weights['ac'] = hparams['lambda_mel_adv']
-        else:
-            #######################
-            #    Discriminator    #
-            #######################
-            if disc_start and self.global_step % hparams['disc_interval'] == 0:
-                model_out = self.model_out_gt
-                mel_g = sample['mels']
-                mel_p = model_out['mel_out']
-                o = self.mel_disc(mel_g)
-                p, pc = o['y'], o['y_c']
-                o_ = self.mel_disc(mel_p)
-                p_, pc_ = o_['y'], o_['y_c']
-                if p_ is not None:
-                    loss_output["r"] = self.mse_loss_fn(p, p.new_ones(p.size()))
-                    loss_output["f"] = self.mse_loss_fn(p_, p_.new_zeros(p_.size()))
-                if pc_ is not None:
-                    loss_output["rc"] = self.mse_loss_fn(pc, pc.new_ones(pc.size()))
-                    loss_output["fc"] = self.mse_loss_fn(pc_, pc_.new_zeros(pc_.size()))
-        total_loss = sum([loss_weights.get(k, 1) * v for k, v in loss_output.items() if isinstance(v, torch.Tensor) and v.requires_grad])
+        elif disc_start and self.global_step % hparams['disc_interval'] == 0:
+            mel_g = sample['mels']
+            model_out = self.model_out_gt
+            mel_p = model_out['mel_out']
+            o = self.mel_disc(mel_g)
+            p, pc = o['y'], o['y_c']
+            o_ = self.mel_disc(mel_p)
+            p_, pc_ = o_['y'], o_['y_c']
+            if p_ is not None:
+                loss_output["r"] = self.mse_loss_fn(p, p.new_ones(p.size()))
+                loss_output["f"] = self.mse_loss_fn(p_, p_.new_zeros(p_.size()))
+            if pc_ is not None:
+                loss_output["rc"] = self.mse_loss_fn(pc, pc.new_ones(pc.size()))
+                loss_output["fc"] = self.mse_loss_fn(pc_, pc_.new_zeros(pc_.size()))
+        total_loss = sum(
+            loss_weights.get(k, 1) * v
+            for k, v in loss_output.items()
+            if isinstance(v, torch.Tensor) and v.requires_grad
+        )
         loss_output['batch_size'] = sample['txt_tokens'].size()[0]
         return total_loss, loss_output
 
@@ -123,14 +123,13 @@ class PortaSpeechAdvTask(FastSpeech2Task):
                                 bert_feats=sample.get("bert_feats"),
                                 cl_feats=sample.get("cl_feats")
                                 )
-            losses = {}
-            losses['kl_v'] = output['kl'].detach()
+            losses = {'kl_v': output['kl'].detach()}
             losses_kl = output['kl']
             losses_kl = torch.clamp(losses_kl, min=hparams['kl_min'])
             losses_kl = min(self.global_step / hparams['kl_start_steps'], 1) * losses_kl
             losses_kl = losses_kl * hparams['lambda_kl']
             losses['kl'] = losses_kl
-            
+
             self.add_mel_loss(output['mel_out'], sample['mels'], losses)
             if hparams['dur_level'] == 'word':
                 self.add_dur_loss(
@@ -141,8 +140,9 @@ class PortaSpeechAdvTask(FastSpeech2Task):
             return losses, output
         else:
             use_gt_dur = kwargs.get('infer_use_gt_dur', hparams['use_gt_dur'])
-            output = self.model(
-                txt_tokens, word_tokens,
+            return self.model(
+                txt_tokens,
+                word_tokens,
                 ph2word=sample['ph2word'],
                 word_len=sample['word_lengths'].max(),
                 pitch=sample.get('pitch'),
@@ -152,12 +152,11 @@ class PortaSpeechAdvTask(FastSpeech2Task):
                 infer=True,
                 spk_embed=spk_embed,
                 spk_id=spk_id,
-                graph_lst=sample['graph_lst'], 
+                graph_lst=sample['graph_lst'],
                 etypes_lst=sample['etypes_lst'],
                 bert_feats=sample.get("bert_feats"),
-                cl_feats=sample.get("cl_feats")
+                cl_feats=sample.get("cl_feats"),
             )
-            return output
 
     def add_dur_loss(self, dur_pred, mel2token, word_len, txt_tokens, losses=None):
         T = word_len.max()
@@ -190,14 +189,13 @@ class PortaSpeechAdvTask(FastSpeech2Task):
             losses['abs_sent_dur_error'] = abs_sent_dur_error
 
     def validation_step(self, sample, batch_idx):
-        outputs = {}
-        outputs['losses'] = {}
+        outputs = {'losses': {}}
         outputs['losses'], model_out = self.run_model(sample)
         outputs['total_loss'] = sum(outputs['losses'].values())
         outputs['nsamples'] = sample['nsamples']
         outputs = tensors_to_scalars(outputs)
         if self.global_step % hparams['valid_infer_interval'] == 0 \
-                and batch_idx < hparams['num_valid_plots']:
+                    and batch_idx < hparams['num_valid_plots']:
             valid_results = self.save_valid_result(sample, batch_idx, model_out)
             wav_gt = valid_results['wav_gt']
             mel_gt = valid_results['mel_gt']

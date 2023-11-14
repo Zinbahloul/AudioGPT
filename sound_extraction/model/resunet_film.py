@@ -107,4 +107,4 @@ if __name__ == "__main__":
     model = UNetRes_FiLM(channels=1, cond_embedding_dim=16)
     cond_vec = torch.randn((1, 16))
     dec_vec = cond_vec
-    print(model(torch.randn((1, 1, 1001, 513)), cond_vec, dec_vec).size())
+    print(model(torch.randn((1, 1, 1001, 513)), dec_vec, dec_vec).size())

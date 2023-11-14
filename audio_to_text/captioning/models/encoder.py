@@ -113,10 +113,7 @@ class AttentionPool(nn.Module):
         # Input is (B, T, D)
         # B, T, D
         w = self.activ(torch.clamp(self.transform(logits), -15, 15))
-        detect = (decision * w).sum(
-            self.pooldim) / (w.sum(self.pooldim) + self.eps)
-        # B, T, D
-        return detect
+        return (decision * w).sum(self.pooldim) / (w.sum(self.pooldim) + self.eps)
 
 
 class MMPool(nn.Module):
@@ -428,12 +425,7 @@ class Cnn14Encoder(nn.Module):
 
         if "model" in checkpoint:
             state_keys = checkpoint["model"].keys()
-            backbone = False
-            for key in state_keys:
-                if key.startswith("backbone."):
-                    backbone = True
-                    break
-
+            backbone = any(key.startswith("backbone.") for key in state_keys)
             if backbone: # COLA
                 state_dict = {}
                 for key, value in checkpoint["model"].items():
@@ -494,7 +486,7 @@ class Cnn14Encoder(nn.Module):
         x = F.dropout(x, p=0.2, training=self.training)
         x = torch.mean(x, dim=3)
         attn_emb = x.transpose(1, 2)
-        
+
         wave_length = torch.as_tensor(wave_length)
         feat_length = torch.div(wave_length, self.hop_length,
             rounding_mode="floor") + 1
@@ -506,14 +498,12 @@ class Cnn14Encoder(nn.Module):
         x = F.dropout(x, p=0.5, training=self.training)
         x = F.relu_(self.fc1(x))
         fc_emb = F.dropout(x, p=0.5, training=self.training)
-        
-        output_dict = {
+
+        return {
             'fc_emb': fc_emb,
             'attn_emb': attn_emb,
-            'attn_emb_len': feat_length
+            'attn_emb_len': feat_length,
         }
-
-        return output_dict
 
 
 class RnnEncoder(BaseEncoder):

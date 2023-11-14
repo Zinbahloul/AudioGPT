@@ -51,7 +51,7 @@ def log_txt_as_img(wh, xc, size=10):
     # wh a tuple of (width, height)
     # xc a list of captions to plot
     b = len(xc)
-    txts = list()
+    txts = []
     for bi in range(b):
         txt = Image.new("RGB", wh, color="white")
         draw = ImageDraw.Draw(txt)
@@ -80,7 +80,7 @@ def ismap(x):
 def isimage(x):
     if not isinstance(x,torch.Tensor):
         return False
-    return (len(x.shape) == 4) and (x.shape[1] == 3 or x.shape[1] == 1)
+    return len(x.shape) == 4 and x.shape[1] in [3, 1]
 
 
 def exists(x):
@@ -109,10 +109,8 @@ def count_params(model, verbose=False):
 
 
 def instantiate_from_config(config,reload=False):
-    if not "target" in config:
-        if config == '__is_first_stage__':
-            return None
-        elif config == "__is_unconditional__":
+    if "target" not in config:
+        if config in ['__is_first_stage__', "__is_unconditional__"]:
             return None
         raise KeyError("Expected key `target` to instantiate.")
     return get_obj_from_str(config["target"],reload=reload)(**config.get("params", dict()))
@@ -128,8 +126,8 @@ def get_obj_from_str(string, reload=False):
 def get_ckpt_path(name, root, check=False):
     assert name in URL_MAP
     path = os.path.join(root, CKPT_MAP[name])
-    if not os.path.exists(path) or (check and not md5_hash(path) == MD5_MAP[name]):
-        print("Downloading {} model from {} to {}".format(name, URL_MAP[name], path))
+    if not os.path.exists(path) or check and md5_hash(path) != MD5_MAP[name]:
+        print(f"Downloading {name} model from {URL_MAP[name]} to {path}")
         download(URL_MAP[name], path)
         md5 = md5_hash(path)
         assert md5 == MD5_MAP[name], md5

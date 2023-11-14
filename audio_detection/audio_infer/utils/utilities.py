@@ -18,8 +18,7 @@ def create_folder(fd):
 def get_filename(path):
     path = os.path.realpath(path)
     na_ext = path.split('/')[-1]
-    na = os.path.splitext(na_ext)[0]
-    return na
+    return os.path.splitext(na_ext)[0]
 
 
 def get_sub_filepaths(folder):
@@ -73,12 +72,12 @@ def read_metadata(csv_path, classes_num, id_to_ix):
     audios_num = len(lines)
     targets = np.zeros((audios_num, classes_num), dtype=np.bool)
     audio_names = []
- 
+
     for n, line in enumerate(lines):
         items = line.split(', ')
         """items: ['--4gqARaEJE', '0.000', '10.000', '"/m/068hy,/m/07q6cd_,/m/0bt9lr,/m/0jbk"\n']"""
 
-        audio_name = 'Y{}.wav'.format(items[0])   # Audios are started with an extra 'Y' when downloading
+        audio_name = f'Y{items[0]}.wav'
         label_ids = items[3].split('"')[1].split(',')
 
         audio_names.append(audio_name)
@@ -87,9 +86,8 @@ def read_metadata(csv_path, classes_num, id_to_ix):
         for id in label_ids:
             ix = id_to_ix[id]
             targets[n, ix] = 1
-    
-    meta_dict = {'audio_name': np.array(audio_names), 'target': targets}
-    return meta_dict
+
+    return {'audio_name': np.array(audio_names), 'target': targets}
 
 
 def float32_to_int16(x):
@@ -106,12 +104,11 @@ def pad_or_truncate(x, audio_length):
     if len(x) <= audio_length:
         return np.concatenate((x, np.zeros(audio_length - len(x))), axis=0)
     else:
-        return x[0 : audio_length]
+        return x[:audio_length]
 
 
 def d_prime(auc):
-    d_prime = stats.norm().ppf(auc) * np.sqrt(2.0)
-    return d_prime
+    return stats.norm().ppf(auc) * np.sqrt(2.0)
 
 
 class Mixup(object):
@@ -129,11 +126,9 @@ class Mixup(object):
           mixup_lambdas: (batch_size,)
         """
         mixup_lambdas = []
-        for n in range(0, batch_size, 2):
+        for _ in range(0, batch_size, 2):
             lam = self.random_state.beta(self.mixup_alpha, self.mixup_alpha, 1)[0]
-            mixup_lambdas.append(lam)
-            mixup_lambdas.append(1. - lam)
-
+            mixup_lambdas.extend((lam, 1. - lam))
         return np.array(mixup_lambdas)
 
 
@@ -143,9 +138,7 @@ class StatisticsContainer(object):
         """
         self.statistics_path = statistics_path
 
-        self.backup_statistics_path = '{}_{}.pkl'.format(
-            os.path.splitext(self.statistics_path)[0], 
-            datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+        self.backup_statistics_path = f"{os.path.splitext(self.statistics_path)[0]}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.pkl"
 
         self.statistics_dict = {'bal': [], 'test': []}
 
@@ -156,8 +149,8 @@ class StatisticsContainer(object):
     def dump(self):
         pickle.dump(self.statistics_dict, open(self.statistics_path, 'wb'))
         pickle.dump(self.statistics_dict, open(self.backup_statistics_path, 'wb'))
-        logging.info('    Dump statistics to {}'.format(self.statistics_path))
-        logging.info('    Dump statistics to {}'.format(self.backup_statistics_path))
+        logging.info(f'    Dump statistics to {self.statistics_path}')
+        logging.info(f'    Dump statistics to {self.backup_statistics_path}')
         
     def load_state_dict(self, resume_iteration):
         self.statistics_dict = pickle.load(open(self.statistics_path, 'rb'))

@@ -248,10 +248,7 @@ class ConvBlock_GLU(nn.Module):
             x = x1 + x2
         elif pool_type == 'None':
             pass
-        elif pool_type == 'LP':
-            pass
-            #nn.LPPool2d(4, pool_size)
-        else:
+        elif pool_type != 'LP':
             raise Exception('Incorrect argument!')
         return x
 
@@ -437,22 +434,19 @@ class Cnn10_mul_scale(nn.Module):
             pool_size1 = (2,2)
             pool_size2 = (2,2)
             pool_size3 = (2,4)
-            pool_size4 = (1,4)
         elif self.scale == 4:
             pool_size1 = (2,2)
             pool_size2 = (2,2)
             pool_size3 = (1,4)
-            pool_size4 = (1,4)
         elif self.scale == 2:
             pool_size1 = (2,2)
             pool_size2 = (1,2)
             pool_size3 = (1,4)
-            pool_size4 = (1,4)
         else:
             pool_size1 = (1,2)
             pool_size2 = (1,2)
             pool_size3 = (1,4)
-            pool_size4 = (1,4)
+        pool_size4 = (1,4)
         # print('input ',input.shape)
         x1 = self.conv_block1_1(input, pool_size=pool_size1, pool_type='avg')
         x1 = x1[:,:,:500,:32]
@@ -494,22 +488,19 @@ class Cnn10(nn.Module):
             pool_size1 = (2,2)
             pool_size2 = (2,2)
             pool_size3 = (2,4)
-            pool_size4 = (1,4)
         elif self.scale == 4:
             pool_size1 = (2,2)
             pool_size2 = (2,2)
             pool_size3 = (1,4)
-            pool_size4 = (1,4)
         elif self.scale == 2:
             pool_size1 = (2,2)
             pool_size2 = (1,2)
             pool_size3 = (1,4)
-            pool_size4 = (1,4)
         else:
             pool_size1 = (1,2)
             pool_size2 = (1,2)
             pool_size3 = (1,4)
-            pool_size4 = (1,4)
+        pool_size4 = (1,4)
         x = self.conv_block1(input, pool_size=pool_size1, pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
         x = self.conv_block2(x, pool_size=pool_size2, pool_type='avg')
@@ -606,10 +597,7 @@ class AttentionPool(nn.Module):
         # Input is (B, T, D)
         # B, T , D
         w = self.activ(torch.clamp(self.transform(logits), -15, 15))
-        detect = (decision * w).sum(
-            self.pooldim) / (w.sum(self.pooldim) + self.eps)
-        # B, T, D
-        return detect
+        return (decision * w).sum(self.pooldim) / (w.sum(self.pooldim) + self.eps)
 
 class Block2D(nn.Module):
     def __init__(self, cin, cout, kernel_size=3, padding=1):
@@ -714,8 +702,7 @@ class conv1d(nn.Module):
         nn.init.constant_(layer.bias, 0.1)
 
     def forward(self, x):
-        out = self.act(self.conv(x))
-        return out
+        return self.act(self.conv(x))
 
 class Atten_1(nn.Module):
     def __init__(self, input_dim, context=2, dropout_rate=0.2):
@@ -1135,8 +1122,7 @@ class RaDur_fusion(nn.Module):
         q = q.unsqueeze(1)
         attn = torch.bmm(q, k.transpose(1, 2))
         attn = attn/self.temperature
-        attn = self.softmax(attn)
-        return attn
+        return self.softmax(attn)
     
     def get_w_ee(self,q,k):
         q = self.q_ee(q)
@@ -1144,17 +1130,11 @@ class RaDur_fusion(nn.Module):
         q = q.unsqueeze(1)
         attn = torch.bmm(q, k.transpose(1, 2))
         attn = attn/self.temperature
-        attn = self.softmax(attn)
-        return attn
+        return self.softmax(attn)
     
     def attention_pooling(self, embeddings, mean_embedding):
         att_pool_w = self.get_w(mean_embedding,embeddings)
-        embedding = torch.bmm(att_pool_w, embeddings).squeeze(1)
-        # print(embedding.shape)
-        # print(att_pool_w.shape)
-        # print(att_pool_w[0])
-        # assert 1==2
-        return embedding
+        return torch.bmm(att_pool_w, embeddings).squeeze(1)
     
     def select_topk_embeddings(self, scores, embeddings, k):
         _, idx_DESC = scores.sort(descending=True, dim=1) # 根据分数进行排序
@@ -1182,8 +1162,7 @@ class RaDur_fusion(nn.Module):
         #print('att_1 ',att_1.shape)
         # assert 1==2
         att_2 = att_1.unsqueeze(2).repeat(1,1,128)
-        Es = selected_embeddings*att_2
-        return Es
+        return selected_embeddings*att_2
     
     def orcal_EE(self, x, embedding, label):
         batch, time, dim = x.shape
@@ -1205,9 +1184,9 @@ class RaDur_fusion(nn.Module):
         f, _ = self.detection.gru(f) #  x  torch.Size([16, 125, 256])
         f = self.detection.fc(f)
         decision_time = torch.softmax(self.detection.outputlayer(f),dim=2) # x  torch.Size([16, 125, 2])
-        
+
         selected_embeddings, top_k = self.select_topk_embeddings(decision_time[:,:,0], mixture_embedding, self.top)
-        
+
         selected_embeddings = self.sum_with_attention(embedding, top_k, selected_embeddings) # add the weight
 
         mix_embedding = selected_embeddings.mean(1).unsqueeze(1) # 
@@ -1220,12 +1199,12 @@ class RaDur_fusion(nn.Module):
         # new detection results
         # embedding_now = mix_embedding.unsqueeze(1)
         # embedding_now = embedding_now.repeat(1, x.shape[1], 1)
-        f_now = self.detection.fusion(mix_embedding, x) 
+        f_now = self.detection.fusion(mix_embedding, x)
         #f_now = torch.cat((x, embedding_now), dim=2) # 
         f_now, _ = self.detection.gru(f_now) #  x  torch.Size([16, 125, 256])
         f_now = self.detection.fc(f_now)
         decision_time_now = torch.softmax(self.detection.outputlayer(f_now), dim=2) # x  torch.Size([16, 125, 2])
-        
+
         top_k = top_k.mean(1)  # get avg score,higher score will have more weight
         larger = top_k > self.tao
         top_k = top_k * larger
@@ -1240,12 +1219,7 @@ class RaDur_fusion(nn.Module):
         # print('neg_w ',neg_w.shape)
         #print('neg_w ',neg_w[:,0:10,0])
         pos_w = 1-neg_w
-        #print('pos_w ',pos_w[:,0:10,0])
-        decision_time_final = decision_time*pos_w + neg_w*decision_time_now
-        #print('decision_time_final ',decision_time_final[0,0:10,0])
-        # print(decision_time_final[0,:,:])
-        #assert 1==2
-        return decision_time_final
+        return decision_time*pos_w + neg_w*decision_time_now
     
     def forward(self, x, ref, label=None):
         batch, time, dim = x.shape

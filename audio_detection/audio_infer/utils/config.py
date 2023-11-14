@@ -20,10 +20,10 @@ for i1 in range(1, len(lines)):
 classes_num = len(labels)
 
 lb_to_ix = {label : i for i, label in enumerate(labels)}
-ix_to_lb = {i : label for i, label in enumerate(labels)}
+ix_to_lb = dict(enumerate(labels))
 
 id_to_ix = {id : i for i, id in enumerate(ids)}
-ix_to_id = {i : id for i, id in enumerate(ids)}
+ix_to_id = dict(enumerate(ids))
 
 full_samples_per_class = np.array([
         937432,  16344,   7822,  10271,   2043,  14420,    733,   1511,

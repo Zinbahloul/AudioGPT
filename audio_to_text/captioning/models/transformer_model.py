@@ -21,15 +21,14 @@ class TransformerModel(CaptionModel):
         cap = input_dict["cap"]
         cap_padding_mask = (cap == self.pad_idx).to(cap.device)
         cap_padding_mask = cap_padding_mask[:, :-1]
-        output = self.decoder(
+        return self.decoder(
             {
                 "word": cap[:, :-1],
                 "attn_emb": input_dict["attn_emb"],
                 "attn_emb_len": input_dict["attn_emb_len"],
-                "cap_padding_mask": cap_padding_mask
+                "cap_padding_mask": cap_padding_mask,
             }
         )
-        return output
 
     def prepare_decoder_input(self, input_dict, output):
         decoder_input = {
@@ -57,20 +56,21 @@ class TransformerModel(CaptionModel):
         return decoder_input
 
     def prepare_beamsearch_decoder_input(self, input_dict, output_i):
-        decoder_input = {}
         t = input_dict["t"]
-        i = input_dict["sample_idx"]
         beam_size = input_dict["beam_size"]
         ###############
         # prepare attn embeds
         ################
         if t == 0:
+            i = input_dict["sample_idx"]
             attn_emb = repeat_tensor(input_dict["attn_emb"][i], beam_size)
             attn_emb_len = repeat_tensor(input_dict["attn_emb_len"][i], beam_size)
             output_i["attn_emb"] = attn_emb
             output_i["attn_emb_len"] = attn_emb_len
-        decoder_input["attn_emb"] = output_i["attn_emb"]
-        decoder_input["attn_emb_len"] = output_i["attn_emb_len"]
+        decoder_input = {
+            "attn_emb": output_i["attn_emb"],
+            "attn_emb_len": output_i["attn_emb_len"],
+        }
         ###############
         # determine input word
         ################
@@ -103,14 +103,13 @@ class M2TransformerModel(CaptionModel):
 
     def seq_forward(self, input_dict):
         cap = input_dict["cap"]
-        output = self.decoder(
+        return self.decoder(
             {
                 "word": cap[:, :-1],
                 "attn_emb": input_dict["attn_emb"],
                 "attn_emb_mask": input_dict["attn_emb_mask"],
             }
         )
-        return output
 
     def prepare_decoder_input(self, input_dict, output):
         decoder_input = {
@@ -136,20 +135,21 @@ class M2TransformerModel(CaptionModel):
         return decoder_input
 
     def prepare_beamsearch_decoder_input(self, input_dict, output_i):
-        decoder_input = {}
         t = input_dict["t"]
-        i = input_dict["sample_idx"]
         beam_size = input_dict["beam_size"]
         ###############
         # prepare attn embeds
         ################
         if t == 0:
+            i = input_dict["sample_idx"]
             attn_emb = repeat_tensor(input_dict["attn_emb"][i], beam_size)
             attn_emb_mask = repeat_tensor(input_dict["attn_emb_mask"][i], beam_size)
             output_i["attn_emb"] = attn_emb
             output_i["attn_emb_mask"] = attn_emb_mask
-        decoder_input["attn_emb"] = output_i["attn_emb"]
-        decoder_input["attn_emb_mask"] = output_i["attn_emb_mask"]
+        decoder_input = {
+            "attn_emb": output_i["attn_emb"],
+            "attn_emb_mask": output_i["attn_emb_mask"],
+        }
         ###############
         # determine input word
         ################
@@ -174,8 +174,7 @@ class EventEncoder(nn.Module):
         
     def forward(self, word_idxs):
         indices = word_idxs / word_idxs.sum(dim=1, keepdim=True)
-        embeddings = indices @ self.label_embedding
-        return embeddings
+        return indices @ self.label_embedding
 
 
 class EventCondTransformerModel(TransformerModel):
@@ -212,9 +211,9 @@ class EventCondTransformerModel(TransformerModel):
     def prepare_beamsearch_decoder_input(self, input_dict, output_i):
         decoder_input = super().prepare_beamsearch_decoder_input(input_dict, output_i)
         t = input_dict["t"]
-        i = input_dict["sample_idx"]
         beam_size = input_dict["beam_size"]
         if t == 0:
+            i = input_dict["sample_idx"]
             output_i["events"] = repeat_tensor(self.label_encoder(input_dict["events"])[i], beam_size)
         decoder_input["events"] = output_i["events"]
         return decoder_input
@@ -236,16 +235,15 @@ class KeywordCondTransformerModel(TransformerModel):
         cap_padding_mask = (cap == self.pad_idx).to(cap.device)
         cap_padding_mask = cap_padding_mask[:, :-1]
         keyword = input_dict["keyword"]
-        output = self.decoder(
+        return self.decoder(
             {
                 "word": cap[:, :-1],
                 "attn_emb": input_dict["attn_emb"],
                 "attn_emb_len": input_dict["attn_emb_len"],
                 "keyword": keyword,
-                "cap_padding_mask": cap_padding_mask
+                "cap_padding_mask": cap_padding_mask,
             }
         )
-        return output
 
     def prepare_decoder_input(self, input_dict, output):
         decoder_input = super().prepare_decoder_input(input_dict, output)
@@ -255,9 +253,9 @@ class KeywordCondTransformerModel(TransformerModel):
     def prepare_beamsearch_decoder_input(self, input_dict, output_i):
         decoder_input = super().prepare_beamsearch_decoder_input(input_dict, output_i)
         t = input_dict["t"]
-        i = input_dict["sample_idx"]
         beam_size = input_dict["beam_size"]
         if t == 0:
+            i = input_dict["sample_idx"]
             output_i["keyword"] = repeat_tensor(input_dict["keyword"][i],
                                                  beam_size)
         decoder_input["keyword"] = output_i["keyword"]

@@ -33,8 +33,7 @@ def generate_length_mask(lens, max_length=None):
         max_length = max(lens)
     idxs = torch.arange(max_length).repeat(N).view(N, max_length)
     idxs = idxs.to(lens.device)
-    mask = (idxs < lens.view(-1, 1))
-    return mask
+    return (idxs < lens.view(-1, 1))
 
 def mean_with_lens(features, lens):
     """

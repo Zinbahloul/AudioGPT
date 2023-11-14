@@ -8,7 +8,7 @@ def load_wav(path):
     max_length = 32000 * 10
     wav = librosa.core.load(path, sr=32000)[0]
     if len(wav) > max_length:
-        audio = wav[0:max_length]
+        audio = wav[:max_length]
 
     # pad audio to max length, 10s for AudioCaps
     if len(wav) < max_length:

@@ -107,8 +107,8 @@ if __name__ == "__main__":
     # scheduler = ExponentialDecayScheduler(optimizer, 600 * 25, 5e-7, 600 * 5)
     criterion = torch.nn.MSELoss()
     lrs = []
-    for epoch in range(1, epochs + 1):
-        for iteration in range(1, iters + 1):
+    for _ in range(1, epochs + 1):
+        for _ in range(1, iters + 1):
             optimizer.zero_grad()
             x = torch.randn(4, 10)
             y = torch.randn(4, 5)

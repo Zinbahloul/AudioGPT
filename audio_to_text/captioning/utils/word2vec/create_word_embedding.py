@@ -34,7 +34,9 @@ def create_embedding(vocab_file: str,
             model.vectors = pca.fit_transform(model.vectors)
     else:
         caption_df = pd.read_json(caption_file)
-        caption_df["tokens"] = caption_df["tokens"].apply(lambda x: ["<start>"] + [token for token in x] + ["<end>"])
+        caption_df["tokens"] = caption_df["tokens"].apply(
+            lambda x: ["<start>"] + list(x) + ["<end>"]
+        )
         sentences = list(caption_df["tokens"].values)
         epochs = word2vec_kwargs.get("epochs", 10)
         if "epochs" in word2vec_kwargs:
@@ -42,9 +44,9 @@ def create_embedding(vocab_file: str,
         model = Word2Vec(size=embed_size, min_count=1, **word2vec_kwargs)
         model.build_vocab(sentences=sentences)
         model.train(sentences=sentences, total_examples=len(sentences), epochs=epochs)
-    
+
     word_embeddings = np.random.randn(len(vocabulary), embed_size)
-    
+
     if isinstance(model, gensim.models.word2vec.Word2Vec):
         model = model.wv
     with tqdm(total=len(vocabulary), ascii=True) as pbar:
@@ -57,7 +59,7 @@ def create_embedding(vocab_file: str,
 
     np.save(output, word_embeddings)
 
-    print("Finish writing word2vec embeddings to " + output)
+    print(f"Finish writing word2vec embeddings to {output}")
 
 
 if __name__ == "__main__":

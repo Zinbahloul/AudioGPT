@@ -33,7 +33,7 @@ class FastSpeech2AdvTask(FastSpeech2Task):
         log_outputs = {}
         loss_weights = {}
         disc_start = hparams['mel_gan'] and self.global_step >= hparams["disc_start_steps"] and \
-                     hparams['lambda_mel_adv'] > 0
+                         hparams['lambda_mel_adv'] > 0
         if optimizer_idx == 0:
             #######################
             #      Generator      #
@@ -42,7 +42,7 @@ class FastSpeech2AdvTask(FastSpeech2Task):
             self.model_out = {k: v.detach() for k, v in model_out.items() if isinstance(v, torch.Tensor)}
             if disc_start:
                 self.disc_cond = disc_cond = self.model_out['decoder_inp'].detach() \
-                    if hparams['use_cond_disc'] else None
+                        if hparams['use_cond_disc'] else None
                 if hparams['mel_loss_no_noise']:
                     self.add_mel_loss(model_out['mel_out_nonoise'], sample['mels'], log_outputs)
                 mel_p = model_out['mel_out']
@@ -84,10 +84,10 @@ class FastSpeech2AdvTask(FastSpeech2Task):
                 if pc_ is not None:
                     log_outputs["rc"] = self.mse_loss_fn(pc, pc.new_ones(pc.size()))
                     log_outputs["fc"] = self.mse_loss_fn(pc_, pc_.new_zeros(pc_.size()))
-                   
+
             if len(log_outputs) == 0:
                 return None
-        total_loss = sum([loss_weights.get(k, 1) * v for k, v in log_outputs.items()])
+        total_loss = sum(loss_weights.get(k, 1) * v for k, v in log_outputs.items())
 
         log_outputs['bs'] = sample['mels'].shape[0]
         return total_loss, log_outputs

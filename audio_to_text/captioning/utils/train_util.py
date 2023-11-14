@@ -14,8 +14,7 @@ from pprint import pformat
 
 def load_dict_from_csv(csv, cols):
     df = pd.read_csv(csv, sep="\t")
-    output = dict(zip(df[cols[0]], df[cols[1]]))
-    return output
+    return dict(zip(df[cols[0]], df[cols[1]]))
 
 
 def init_logger(filename, level="INFO"):
@@ -60,7 +59,7 @@ def merge_a_into_b(a, b):
         if isinstance(v, dict) and k in b:
             assert isinstance(
                 b[k], dict
-            ), "Cannot inherit key '{}' from base!".format(k)
+            ), f"Cannot inherit key '{k}' from base!"
             merge_a_into_b(v, b[k])
         else:
             b[k] = v
@@ -85,9 +84,7 @@ def load_config(config_file):
 
 def parse_config_or_kwargs(config_file, **kwargs):
     yaml_config = load_config(config_file)
-    # passed kwargs will override yaml config
-    args = dict(yaml_config, **kwargs)
-    return args
+    return dict(yaml_config, **kwargs)
 
 
 def store_yaml(config, config_file):

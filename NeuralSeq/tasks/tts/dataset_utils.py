@@ -122,14 +122,14 @@ class FastSpeechDataset(BaseTTSDataset):
             items = {}
             for i in range(len(self.indexed_ds)):
                 speaker = self.indexed_ds[i]['item_name'].split('_')[0]
-                if speaker not in items.keys():
-                    items[speaker] = [i]
-                else:
+                if speaker in items:
                     items[speaker].append(i)
+                else:
+                    items[speaker] = [i]
             sort_item = sorted(items.values(), key=lambda item_pre_speaker: len(item_pre_speaker), reverse=True)
             self.avail_idxs = [n for a in sort_item for n in a][:hparams['num_test_samples']]
             self.indexed_ds, self.sizes = self.load_test_inputs()
-            self.avail_idxs = [i for i in range(hparams['num_test_samples'])]
+            self.avail_idxs = list(range(hparams['num_test_samples']))
 
         if hparams['pitch_type'] == 'cwt':
             _, hparams['cwt_scales'] = get_lf0_cwt(np.ones(10))
@@ -138,7 +138,6 @@ class FastSpeechDataset(BaseTTSDataset):
         sample = super(FastSpeechDataset, self).__getitem__(index)
         item = self._get_item(index)
         hparams = self.hparams
-        max_frames = hparams['max_frames']
         spec = sample['mel']
         T = spec.shape[0]
         phone = sample['txt_token']
@@ -146,11 +145,12 @@ class FastSpeechDataset(BaseTTSDataset):
         sample['mel2ph'] = mel2ph = torch.LongTensor(item['mel2ph'])[:T] if 'mel2ph' in item else None
         if hparams['use_pitch_embed']:
             assert 'f0' in item
+            max_frames = hparams['max_frames']
             if hparams.get('normalize_pitch', False):
                 f0 = item["f0"]
                 if len(f0 > 0) > 0 and f0[f0 > 0].std() > 0:
                     f0[f0 > 0] = (f0[f0 > 0] - f0[f0 > 0].mean()) / f0[f0 > 0].std() * hparams['f0_std'] + \
-                                 hparams['f0_mean']
+                                     hparams['f0_mean']
                     f0[f0 > 0] = f0[f0 > 0].clip(min=60, max=500)
                 pitch = f0_to_coarse(f0)
                 pitch = torch.LongTensor(pitch[:max_frames])

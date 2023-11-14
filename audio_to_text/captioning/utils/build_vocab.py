@@ -15,15 +15,13 @@ class Vocabulary(object):
         self.idx = 0
 
     def add_word(self, word):
-        if not word in self.word2idx:
+        if word not in self.word2idx:
             self.word2idx[word] = self.idx
             self.idx2word[self.idx] = word
             self.idx += 1
 
     def __call__(self, word):
-        if not word in self.word2idx:
-            return self.word2idx["<unk>"]
-        return self.word2idx[word]
+        return self.word2idx[word] if word in self.word2idx else self.word2idx["<unk>"]
 
     def __getitem__(self, word_id):
         return self.idx2word[word_id]
@@ -65,7 +63,7 @@ def build_vocab(input_json: str,
     data = json.load(open(input_json, "r"))["audios"]
     counter = Counter()
     pretokenized = "tokens" in data[0]["captions"][0]
-    
+
     if zh:
         from nltk.parse.corenlp import CoreNLPParser
         from zhon.hanzi import punctuation
@@ -79,40 +77,36 @@ def build_vocab(input_json: str,
                     caption = data[audio_idx]["captions"][cap_idx]["caption"]
                     # Remove all punctuations
                     if not keep_punctuation:
-                        caption = re.sub("[{}]".format(punctuation), "", caption)
-                    if character_level:
-                        tokens = list(caption)
-                    else:
-                        tokens = list(parser.tokenize(caption))
+                        caption = re.sub(f"[{punctuation}]", "", caption)
+                    tokens = list(caption) if character_level else list(parser.tokenize(caption))
                     data[audio_idx]["captions"][cap_idx]["tokens"] = " ".join(tokens)
                 counter.update(tokens)
+    elif pretokenized:
+        for audio_idx in tqdm(range(len(data)), leave=False, ascii=True):
+            for cap_idx in range(len(data[audio_idx]["captions"])):
+                tokens = data[audio_idx]["captions"][cap_idx]["tokens"].split()
+                counter.update(tokens)
     else:
-        if pretokenized:
-            for audio_idx in tqdm(range(len(data)), leave=False, ascii=True):
-                for cap_idx in range(len(data[audio_idx]["captions"])):
-                    tokens = data[audio_idx]["captions"][cap_idx]["tokens"].split()
-                    counter.update(tokens)
-        else:
-            from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
-            captions = {}
-            for audio_idx in range(len(data)):
-                audio_id = data[audio_idx]["audio_id"]
-                captions[audio_id] = []
-                for cap_idx in range(len(data[audio_idx]["captions"])):
-                    caption = data[audio_idx]["captions"][cap_idx]["caption"]
-                    captions[audio_id].append({
-                        "audio_id": audio_id,
-                        "id": cap_idx,
-                        "caption": caption
-                    })
-            tokenizer = PTBTokenizer()
-            captions = tokenizer.tokenize(captions)
-            for audio_idx in tqdm(range(len(data)), leave=False, ascii=True):
-                audio_id = data[audio_idx]["audio_id"]
-                for cap_idx in range(len(data[audio_idx]["captions"])):
-                    tokens = captions[audio_id][cap_idx]
-                    data[audio_idx]["captions"][cap_idx]["tokens"] = tokens
-                    counter.update(tokens.split(" "))
+        from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
+        captions = {}
+        for audio_idx in range(len(data)):
+            audio_id = data[audio_idx]["audio_id"]
+            captions[audio_id] = []
+            for cap_idx in range(len(data[audio_idx]["captions"])):
+                caption = data[audio_idx]["captions"][cap_idx]["caption"]
+                captions[audio_id].append({
+                    "audio_id": audio_id,
+                    "id": cap_idx,
+                    "caption": caption
+                })
+        tokenizer = PTBTokenizer()
+        captions = tokenizer.tokenize(captions)
+        for audio_idx in tqdm(range(len(data)), leave=False, ascii=True):
+            audio_id = data[audio_idx]["audio_id"]
+            for cap_idx in range(len(data[audio_idx]["captions"])):
+                tokens = captions[audio_id][cap_idx]
+                data[audio_idx]["captions"][cap_idx]["tokens"] = tokens
+                counter.update(tokens.split(" "))
 
     if not pretokenized:
         json.dump({ "audios": data }, open(input_json, "w"), indent=4, ensure_ascii=not zh)
@@ -145,8 +139,8 @@ def process(input_json: str,
         input_json=input_json, threshold=threshold, keep_punctuation=keep_punctuation,
         host_address=host_address, character_level=character_level, zh=zh)
     pickle.dump(vocabulary, open(output_file, "wb"))
-    logging.info("Total vocabulary size: {}".format(len(vocabulary)))
-    logging.info("Saved vocab to '{}'".format(output_file))
+    logging.info(f"Total vocabulary size: {len(vocabulary)}")
+    logging.info(f"Saved vocab to '{output_file}'")
 
 
 if __name__ == '__main__':
