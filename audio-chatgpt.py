@@ -80,24 +80,21 @@ def cut_dialogue_history(history_memory, keep_last_n_words = 500):
     print(f"history_memory:{history_memory}, n_tokens: {n_tokens}")
     if n_tokens < keep_last_n_words:
         return history_memory
-    else:
-        paragraphs = history_memory.split('\n')
-        last_n_tokens = n_tokens
-        while last_n_tokens >= keep_last_n_words:
-            last_n_tokens = last_n_tokens - len(paragraphs[0].split(' '))
-            paragraphs = paragraphs[1:]
-        return '\n' + '\n'.join(paragraphs)
+    paragraphs = history_memory.split('\n')
+    last_n_tokens = n_tokens
+    while last_n_tokens >= keep_last_n_words:
+        last_n_tokens -= len(paragraphs[0].split(' '))
+        paragraphs = paragraphs[1:]
+    return '\n' + '\n'.join(paragraphs)
 
 
 def merge_audio(audio_path_1, audio_path_2):
-    merged_signal = []
     sr_1, signal_1 = wavfile.read(audio_path_1)
     sr_2, signal_2 = wavfile.read(audio_path_2)
-    merged_signal.append(signal_1)
-    merged_signal.append(signal_2)
+    merged_signal = [signal_1, signal_2]
     merged_signal = np.hstack(merged_signal)
     merged_signal = np.asarray(merged_signal, dtype=np.int16)
-    audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+    audio_filename = os.path.join('audio', f"{str(uuid.uuid4())[:8]}.wav")
     wavfile.write(audio_filename, sr_2, merged_signal)
     return audio_filename
 
@@ -106,7 +103,7 @@ class T2I:
         from transformers import AutoModelForCausalLM, AutoTokenizer
         from diffusers import StableDiffusionPipeline
         from transformers import pipeline
-        print("Initializing T2I to %s" % device)
+        print(f"Initializing T2I to {device}")
         self.device = device
         self.pipe = StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5", torch_dtype=torch.float16)
         self.text_refine_tokenizer = AutoTokenizer.from_pretrained("Gustavosta/MagicPrompt-Stable-Diffusion")
@@ -115,7 +112,7 @@ class T2I:
         self.pipe.to(device)
 
     def inference(self, text):
-        image_filename = os.path.join('image', str(uuid.uuid4())[0:8] + ".png")
+        image_filename = os.path.join('image', f"{str(uuid.uuid4())[:8]}.png")
         refined_text = self.text_refine_gpt2_pipe(text)[0]["generated_text"]
         print(f'{text} refined to {refined_text}')
         image = self.pipe(refined_text).images[0]
@@ -126,7 +123,7 @@ class T2I:
 class ImageCaptioning:
     def __init__(self, device):
         from transformers import BlipProcessor, BlipForConditionalGeneration
-        print("Initializing ImageCaptioning to %s" % device)
+        print(f"Initializing ImageCaptioning to {device}")
         self.device = device
         self.processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
         self.model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base").to(self.device)
@@ -134,12 +131,11 @@ class ImageCaptioning:
     def inference(self, image_path):
         inputs = self.processor(Image.open(image_path), return_tensors="pt").to(self.device)
         out = self.model.generate(**inputs)
-        captions = self.processor.decode(out[0], skip_special_tokens=True)
-        return captions
+        return self.processor.decode(out[0], skip_special_tokens=True)
 
 class T2A:
     def __init__(self, device):
-        print("Initializing Make-An-Audio to %s" % device)
+        print(f"Initializing Make-An-Audio to {device}")
         self.device = device
         self.sampler = self._initialize_model('text_to_audio/Make_An_Audio/configs/text_to_audio/txt2audio_args.yaml', 'text_to_audio/Make_An_Audio/useful_ckpts/ta40multi_epoch=000085.ckpt', device=device)
         self.vocoder = VocoderBigVGAN('text_to_audio/Make_An_Audio/vocoder/logs/bigv16k53w',device=device)
@@ -152,8 +148,7 @@ class T2A:
         model = model.to(device)
         model.cond_stage_model.to(model.device)
         model.cond_stage_model.device = model.device
-        sampler = DDIMSampler(model)
-        return sampler
+        return DDIMSampler(model)
 
     def txt2audio(self, text, seed = 55, scale = 1.5, ddim_steps = 100, n_samples = 3, W = 624, H = 80):
         SAMPLE_RATE = 16000
@@ -176,11 +171,10 @@ class T2A:
         x_samples_ddim = torch.clamp((x_samples_ddim+1.0)/2.0, min=0.0, max=1.0) # [0, 1]
 
         wav_list = []
-        for idx,spec in enumerate(x_samples_ddim):
+        for spec in x_samples_ddim:
             wav = self.vocoder.vocode(spec)
             wav_list.append((SAMPLE_RATE,wav))
-        best_wav = self.select_best_audio(text, wav_list)
-        return best_wav
+        return self.select_best_audio(text, wav_list)
 
     def select_best_audio(self, prompt, wav_list):
         from wav_evaluation.models.CLAPWrapper import CLAPWrapper
@@ -206,14 +200,14 @@ class T2A:
                 H = melbins,
                 W = mel_len
             )
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        audio_filename = os.path.join('audio', f"{str(uuid.uuid4())[:8]}.wav")
         soundfile.write(audio_filename, result[1], samplerate = 16000)
         print(f"Processed T2I.run, text: {text}, audio_filename: {audio_filename}")
         return audio_filename
 
 class I2A:
     def __init__(self, device):
-        print("Initializing Make-An-Audio-Image to %s" % device)
+        print(f"Initializing Make-An-Audio-Image to {device}")
         self.device = device
         self.sampler = self._initialize_model('text_to_audio/Make_An_Audio/configs/img_to_audio/img2audio_args.yaml', 'text_to_audio/Make_An_Audio/useful_ckpts/ta54_epoch=000216.ckpt', device=device)
         self.vocoder = VocoderBigVGAN('text_to_audio/Make_An_Audio/vocoder/logs/bigv16k53w',device=device)
@@ -226,8 +220,7 @@ class I2A:
         model = model.to(device)
         model.cond_stage_model.to(model.device)
         model.cond_stage_model.device = model.device
-        sampler = DDIMSampler(model)
-        return sampler
+        return DDIMSampler(model)
 
     def img2audio(self, image, seed = 55, scale = 3, ddim_steps = 100, W = 624, H = 80):
         SAMPLE_RATE = 16000
@@ -254,11 +247,10 @@ class I2A:
         x_samples_ddim = self.sampler.model.decode_first_stage(samples_ddim)
         x_samples_ddim = torch.clamp((x_samples_ddim+1.0)/2.0, min=0.0, max=1.0) # [0, 1]
         wav_list = []
-        for idx,spec in enumerate(x_samples_ddim):
+        for spec in x_samples_ddim:
             wav = self.vocoder.vocode(spec)
             wav_list.append((SAMPLE_RATE,wav))
-        best_wav = wav_list[0]
-        return best_wav
+        return wav_list[0]
     def inference(self, image, seed = 55, scale = 3, ddim_steps = 100, W = 624, H = 80):
         melbins,mel_len = 80,624
         with torch.no_grad():
@@ -267,7 +259,7 @@ class I2A:
                 H=melbins,
                 W=mel_len
             )
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        audio_filename = os.path.join('audio', f"{str(uuid.uuid4())[:8]}.wav")
         soundfile.write(audio_filename, result[1], samplerate = 16000)
         print(f"Processed I2a.run, image_filename: {image}, audio_filename: {audio_filename}")
         return audio_filename
@@ -277,7 +269,7 @@ class TTS:
         from inference.tts.PortaSpeech import TTSInference
         if device is None:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        print("Initializing PortaSpeech to %s" % device)
+        print(f"Initializing PortaSpeech to {device}")
         self.device = device
         self.exp_name = 'checkpoints/ps_adv_baseline'
         self.set_model_hparams()
@@ -291,7 +283,7 @@ class TTS:
         self.set_model_hparams()
         inp = {"text": text}
         out = self.inferencer.infer_once(inp)
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        audio_filename = os.path.join('audio', f"{str(uuid.uuid4())[:8]}.wav")
         soundfile.write(audio_filename, out, samplerate=22050)
         return audio_filename
 
@@ -300,7 +292,7 @@ class T2S:
         from inference.svs.ds_e2e import DiffSingerE2EInfer
         if device is None:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        print("Initializing DiffSinger to %s" % device)
+        print(f"Initializing DiffSinger to {device}")
         self.device = device
         self.exp_name = 'checkpoints/0831_opencpop_ds1000'
         self.config= 'NeuralSeq/egs/egs_bases/svs/midi/e2e/opencpop/ds1000.yaml'
@@ -321,7 +313,7 @@ class T2S:
         val = inputs.split(",")
         key = ['text', 'notes', 'notes_duration']
         try:
-            inp = {k: v for k, v in zip(key, val)}
+            inp = dict(zip(key, val))
             wav = self.pipe.infer_once(inp)
         except:
             print('Error occurs. Generate default audio sample.\n')
@@ -333,7 +325,7 @@ class T2S:
         #    inp = {k:v for k,v in zip(key,val)}
         #wav = self.pipe.infer_once(inp)
         wav *= 32767
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        audio_filename = os.path.join('audio', f"{str(uuid.uuid4())[:8]}.wav")
         wavfile.write(audio_filename, self.hp['audio_sample_rate'], wav.astype(np.int16))
         print(f"Processed T2S.run, audio_filename: {audio_filename}")
         return audio_filename
@@ -343,7 +335,7 @@ class t2s_VISinger:
         from espnet2.bin.svs_inference import SingingGenerate
         if device is None:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        print("Initializing VISingere to %s" % device)
+        print(f"Initializing VISingere to {device}")
         tag = 'AQuarterMile/opencpop_visinger1'
         self.model = SingingGenerate.from_pretrained(
             model_tag=str_or_none(tag),
@@ -360,23 +352,21 @@ class t2s_VISinger:
         phn = ['sh', 'i', 'q', 'v', 'n', 'i', 'SP', 'AP']
         score = [[0, 0.50625, 'sh_i', 58, 'sh_i'], [0.50625, 1.09728, 'q_v', 56, 'q_v'], [1.09728, 1.9832100000000001, 'n_i', 53, 'n_i'], [1.9832100000000001, 7.105360000000001, 'SP', 0, 'SP'], [7.105360000000001, 7.604390000000001, 'AP', 0, 'AP']]
         tempo = 70
-        tmp = {}
-        tmp["label"] = phn_dur, phn
-        tmp["score"] = tempo, score
+        tmp = {"label": (phn_dur, phn), "score": (tempo, score)}
         self.default_inp = tmp
 
     def inference(self, inputs):
         val = inputs.split(",")
         key = ['text', 'notes', 'notes_duration']
         try: # TODO: input will be update
-            inp = {k: v for k, v in zip(key, val)}
+            inp = dict(zip(key, val))
             wav = self.model(text=inp)["wav"]
         except:
             print('Error occurs. Generate default audio sample.\n')
             inp = self.default_inp
             wav = self.model(text=inp)["wav"]
 
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        audio_filename = os.path.join('audio', f"{str(uuid.uuid4())[:8]}.wav")
         soundfile.write(audio_filename, wav, samplerate=self.model.fs)
         return audio_filename
 
@@ -385,7 +375,7 @@ class TTS_OOD:
         from inference.tts.GenerSpeech import GenerSpeechInfer
         if device is None:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        print("Initializing GenerSpeech to %s" % device)
+        print(f"Initializing GenerSpeech to {device}")
         self.device = device
         self.exp_name = 'checkpoints/GenerSpeech'
         self.config = 'NeuralSeq/modules/GenerSpeech/config/generspeech.yaml'
@@ -406,10 +396,10 @@ class TTS_OOD:
         self.set_model_hparams()
         key = ['ref_audio', 'text']
         val = inputs.split(",")
-        inp = {k: v for k, v in zip(key, val)}
+        inp = dict(zip(key, val))
         wav = self.pipe.infer_once(inp)
         wav *= 32767
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        audio_filename = os.path.join('audio', f"{str(uuid.uuid4())[:8]}.wav")
         wavfile.write(audio_filename, self.hp['audio_sample_rate'], wav.astype(np.int16))
         print(
             f"Processed GenerSpeech.run. Input text:{val[1]}. Input reference audio: {val[0]}. Output Audio_filename: {audio_filename}")
@@ -417,7 +407,7 @@ class TTS_OOD:
 
 class Inpaint:
     def __init__(self, device):
-        print("Initializing Make-An-Audio-inpaint to %s" % device)
+        print(f"Initializing Make-An-Audio-inpaint to {device}")
         self.device = device
         self.sampler = self._initialize_model_inpaint('text_to_audio/Make_An_Audio/configs/inpaint/txt2audio_args.yaml', 'text_to_audio/Make_An_Audio/useful_ckpts/inpaint7_epoch00047.ckpt')
         self.vocoder = VocoderBigVGAN('text_to_audio/Make_An_Audio/vocoder/logs/bigv16k53w',device=device)
@@ -430,8 +420,7 @@ class Inpaint:
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         model = model.to(device)
         print(model.device, device, model.cond_stage_model.device)
-        sampler = DDIMSampler(model)
-        return sampler
+        return DDIMSampler(model)
 
     def make_batch_sd(self, mel, mask, num_samples=1):
 
@@ -443,12 +432,17 @@ class Inpaint:
         mask = mask * 2 - 1
         masked_mel = masked_mel * 2 -1
 
-        batch = {
-             "mel": repeat(mel.to(device=self.device), "1 ... -> n ...", n=num_samples),
-             "mask": repeat(mask.to(device=self.device), "1 ... -> n ...", n=num_samples),
-             "masked_mel": repeat(masked_mel.to(device=self.device), "1 ... -> n ...", n=num_samples),
+        return {
+            "mel": repeat(
+                mel.to(device=self.device), "1 ... -> n ...", n=num_samples
+            ),
+            "mask": repeat(
+                mask.to(device=self.device), "1 ... -> n ...", n=num_samples
+            ),
+            "masked_mel": repeat(
+                masked_mel.to(device=self.device), "1 ... -> n ...", n=num_samples
+            ),
         }
-        return batch
     def gen_mel(self, input_audio_path):
         SAMPLE_RATE = 16000
         sr, ori_wav = wavfile.read(input_audio_path)
@@ -467,8 +461,7 @@ class Inpaint:
         else:
             input_wav = ori_wav[:input_len]
 
-        mel = TRANSFORMS_16000(input_wav)
-        return mel
+        return TRANSFORMS_16000(input_wav)
     def gen_mel_audio(self, input_audio):
         SAMPLE_RATE = 16000
         sr,ori_wav = input_audio
@@ -487,14 +480,13 @@ class Inpaint:
             input_wav = np.pad(ori_wav,(0,mel_len*hop_size),constant_values=0)
         else:
             input_wav = ori_wav[:input_len]
-        mel = TRANSFORMS_16000(input_wav)
-        return mel
+        return TRANSFORMS_16000(input_wav)
     def show_mel_fn(self, input_audio_path):
         crop_len = 500
         crop_mel = self.gen_mel(input_audio_path)[:,:crop_len]
         color_mel = self.cmap_transform(crop_mel)
         image = Image.fromarray((color_mel*255).astype(np.uint8))
-        image_filename = os.path.join('image', str(uuid.uuid4())[0:8] + ".png")
+        image_filename = os.path.join('image', f"{str(uuid.uuid4())[:8]}.png")
         image.save(image_filename)
         return image_filename
     def inpaint(self, batch, seed, ddim_steps, num_samples=1, W=512, H=512):
@@ -551,15 +543,15 @@ class Inpaint:
         input_len = int(input_audio[1].shape[0] * SAMPLE_RATE / input_audio[0])
         gen_wav = (gen_wav * 32768).astype(np.int16)[:input_len]
         image = Image.fromarray((color_mel*255).astype(np.uint8))
-        image_filename = os.path.join('image', str(uuid.uuid4())[0:8] + ".png")
+        image_filename = os.path.join('image', f"{str(uuid.uuid4())[:8]}.png")
         image.save(image_filename)
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        audio_filename = os.path.join('audio', f"{str(uuid.uuid4())[:8]}.wav")
         soundfile.write(audio_filename, gen_wav, samplerate = 16000)
         return image_filename, audio_filename
     
 class ASR:
     def __init__(self, device):
-        print("Initializing Whisper to %s" % device)
+        print(f"Initializing Whisper to {device}")
         self.device = device
         self.model = whisper.load_model("base", device=device)
 
@@ -578,7 +570,7 @@ class ASR:
 class A2T:
     def __init__(self, device):
         from audio_to_text.inference_waveform import AudioCapModel
-        print("Initializing Audio-To-Text Model to %s" % device)
+        print(f"Initializing Audio-To-Text Model to {device}")
         self.device = device
         self.model = AudioCapModel("audio_to_text/audiocaps_cntrstv_cnn14rnn_trm")
     def inference(self, audio_path):
@@ -588,7 +580,7 @@ class A2T:
 
 class GeneFace:
     def __init__(self, device=None):
-        print("Initializing GeneFace model to %s" % device)
+        print(f"Initializing GeneFace model to {device}")
         from audio_to_face.GeneFace_binding import GeneFaceInfer
         if device is None:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -604,7 +596,7 @@ class GeneFace:
             'out_npy_name': f'geneface/tmp/{audio_base_name}.npy',
             'cond_name': f'geneface/tmp/{audio_base_name}.npy',
             'out_video_name': out_video_name,
-            'tmp_imgs_dir': f'video/tmp_imgs',
+            'tmp_imgs_dir': 'video/tmp_imgs',
         }
         self.geneface_model.infer_once(inp)
         return out_video_name
@@ -649,7 +641,7 @@ class SoundDetection:
         import matplotlib.pyplot as plt
         sorted_indexes = np.argsort(np.max(framewise_output, axis=0))[::-1]
         top_k = 10  # Show top results
-        top_result_mat = framewise_output[:, sorted_indexes[0 : top_k]]    
+        top_result_mat = framewise_output[:, sorted_indexes[:top_k]]
         """(time_steps, top_k)"""
         # Plot result    
         stft = librosa.core.stft(y=waveform[0].data.cpu().numpy(), n_fft=self.window_size, 
@@ -663,12 +655,12 @@ class SoundDetection:
         axs[1].xaxis.set_ticks(np.arange(0, frames_num, self.frames_per_second))
         axs[1].xaxis.set_ticklabels(np.arange(0, frames_num / self.frames_per_second))
         axs[1].yaxis.set_ticks(np.arange(0, top_k))
-        axs[1].yaxis.set_ticklabels(np.array(self.labels)[sorted_indexes[0 : top_k]])
+        axs[1].yaxis.set_ticklabels(np.array(self.labels)[sorted_indexes[:top_k]])
         axs[1].yaxis.grid(color='k', linestyle='solid', linewidth=0.3, alpha=0.3)
         axs[1].set_xlabel('Seconds')
         axs[1].xaxis.set_ticks_position('bottom')
         plt.tight_layout()
-        image_filename = os.path.join('image', str(uuid.uuid4())[0:8] + ".png")
+        image_filename = os.path.join('image', f"{str(uuid.uuid4())[:8]}.png")
         plt.savefig(image_filename)
         return image_filename
 
@@ -695,16 +687,16 @@ class SoundExtraction:
         waveform = load_wav(audio_path)
         waveform = torch.tensor(waveform).transpose(1,0)
         mixed_mag, mixed_phase = self.stft.transform(waveform)
-        text_query = ['[CLS] ' + text]
+        text_query = [f'[CLS] {text}']
         mixed_mag = mixed_mag.transpose(2,1).unsqueeze(0).to(self.device)
         est_mask = self.model(mixed_mag, text_query)
-        est_mag = est_mask * mixed_mag  
-        est_mag = est_mag.squeeze(1)  
-        est_mag = est_mag.permute(0, 2, 1) 
+        est_mag = est_mask * mixed_mag
+        est_mag = est_mag.squeeze(1)
+        est_mag = est_mag.permute(0, 2, 1)
         est_wav = self.stft.inverse(est_mag.cpu().detach(), mixed_phase)
-        est_wav = est_wav.squeeze(0).squeeze(0).numpy()  
+        est_wav = est_wav.squeeze(0).squeeze(0).numpy()
         #est_path = f'output/est{i}.wav'
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        audio_filename = os.path.join('audio', f"{str(uuid.uuid4())[:8]}.wav")
         print('audio_filename ', audio_filename)
         save_wav(est_wav, audio_filename)
         return audio_filename
@@ -735,7 +727,7 @@ class Binaural:
         rand_int = random.randint(0,4)
         view = np.loadtxt(self.position_file[rand_int]).transpose().astype(np.float32)
         view = torch.from_numpy(view)
-        if not view.shape[-1] * 400 == mono.shape[-1]:
+        if view.shape[-1] * 400 != mono.shape[-1]:
             mono = mono[:,:(mono.shape[-1]//400)*400] # 
             if view.shape[1]*400 > mono.shape[1]:
                 m_a = view.shape[1] - mono.shape[-1]//400 
@@ -765,7 +757,7 @@ class Binaural:
         binaural = torch.cat([chunk["binaural"] for chunk in chunks], dim=-1)
         binaural = torch.clamp(binaural, min=-1, max=1).cpu()
         #binaural = chunked_forwarding(net, mono, view)
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        audio_filename = os.path.join('audio', f"{str(uuid.uuid4())[:8]}.wav")
         import torchaudio
         torchaudio.save(audio_filename, binaural, sr)
         #soundfile.write(audio_filename, binaural, samplerate = 48000)
@@ -787,7 +779,7 @@ class TargetSoundDetection:
         self.EPS = np.spacing(1)
         self.clip_model, _ = clip.load("ViT-B/32", device=self.device)
         self.event_labels = event_labels
-        self.id_to_event =  {i : label for i, label in enumerate(self.event_labels)}
+        self.id_to_event = dict(enumerate(self.event_labels))
         config = torch.load('audio_detection/target_sound_detection/useful_ckpts/tsd/run_config.pth', map_location='cpu')
         config_parameters = dict(config)
         config_parameters['tao'] = 0.6
@@ -817,8 +809,7 @@ class TargetSoundDetection:
     
     def build_clip(self, text):
         text = clip.tokenize(text).to(self.device) # ["a diagram with dog", "a dog", "a cat"]
-        text_features = self.clip_model.encode_text(text)
-        return text_features
+        return self.clip_model.encode_text(text)
     
     def cal_similarity(self, target, retrievals):
         ans = []
@@ -854,23 +845,31 @@ class TargetSoundDetection:
         #print('filtered_pred ', filtered_pred)
         time_predictions = []
         for index_k in range(filtered_pred.shape[0]):
-            decoded_pred = []
             decoded_pred_ = decode_with_timestamps(target_event, filtered_pred[index_k,:])
             if len(decoded_pred_) == 0: # neg deal
                 decoded_pred_.append((target_event, 0, 0))
-            decoded_pred.append(decoded_pred_)
+            decoded_pred = [decoded_pred_]
             for num_batch in range(len(decoded_pred)): # when we test our model,the batch_size is 1
                 cur_pred = pred[num_batch]
                 # Save each frame output, for later visualization
                 label_prediction = decoded_pred[num_batch] # frame predict
                 # print(label_prediction)
-                for event_label, onset, offset in label_prediction:
-                    time_predictions.append({
-                        'onset': onset*time_ratio,
-                        'offset': offset*time_ratio,})
+                time_predictions.extend(
+                    {
+                        'onset': onset * time_ratio,
+                        'offset': offset * time_ratio,
+                    }
+                    for event_label, onset, offset in label_prediction
+                )
         ans = ''
         for i,item in enumerate(time_predictions):
-            ans = ans + 'segment' + str(i+1) + ' start_time: ' + str(item['onset']) + '  end_time: ' + str(item['offset']) + '\t'
+            ans = (
+                f'{ans}segment{str(i + 1)} start_time: '
+                + str(item['onset'])
+                + '  end_time: '
+                + str(item['offset'])
+                + '\t'
+            )
         #print(ans)
         return ans
 
@@ -963,7 +962,7 @@ class Speech_Enh_SS_SC:
     def __init__(self, device="cuda", model_name="espnet/Wangyou_Zhang_chime4_enh_train_enh_conv_tasnet_raw"):
         self.model_name = model_name
         self.device = device
-        print("Initializing ESPnet Enh to %s" % device)
+        print(f"Initializing ESPnet Enh to {device}")
         self._initialize_model()
 
     def _initialize_model(self):
@@ -992,10 +991,9 @@ class Speech_Enh_SS_SC:
         # speech = torch.from_numpy(speech)
         # assert speech.dim() == 1
         enh_speech = self.separate_speech(speech[None, ...], fs=sr)
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        audio_filename = os.path.join('audio', f"{str(uuid.uuid4())[:8]}.wav")
         # if len(enh_speech) == 1:
         soundfile.write(audio_filename, enh_speech[0].squeeze(), samplerate=sr)
-            # return enh_speech[0]
         # return enh_speech
         # else: 
         #     print("############")
@@ -1010,7 +1008,7 @@ class Speech_SS:
     def __init__(self, device="cuda", model_name="lichenda/wsj0_2mix_skim_noncausal"):
         self.model_name = model_name
         self.device = device
-        print("Initializing ESPnet SS to %s" % device)
+        print(f"Initializing ESPnet SS to {device}")
         self._initialize_model()
 
     def _initialize_model(self):
@@ -1036,14 +1034,14 @@ class Speech_SS:
     def inference(self, speech_path):
         speech, sr = soundfile.read(speech_path)
         enh_speech = self.separate_speech(speech[None, ...], fs=sr)
-        audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        audio_filename = os.path.join('audio', f"{str(uuid.uuid4())[:8]}.wav")
         if len(enh_speech) == 1:
             soundfile.write(audio_filename, enh_speech[0], samplerate=sr)
         else:
             # print("############")
-            audio_filename_1 = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+            audio_filename_1 = os.path.join('audio', f"{str(uuid.uuid4())[:8]}.wav")
             soundfile.write(audio_filename_1, enh_speech[0].squeeze(), samplerate=sr)
-            audio_filename_2 = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+            audio_filename_2 = os.path.join('audio', f"{str(uuid.uuid4())[:8]}.wav")
             soundfile.write(audio_filename_2, enh_speech[1].squeeze(), samplerate=sr)
             audio_filename = merge_audio(audio_filename_1, audio_filename_2)
         return audio_filename
@@ -1208,7 +1206,11 @@ class ConversationBot:
             return state, state, gr.Audio.update(visible=False), gr.Video.update(visible=False), gr.Image.update(visible=False), gr.Button.update(visible=False)
         else:
             tool = res['intermediate_steps'][0][0].tool
-            if tool == "Generate Image From User Input Text" or tool == "Generate Text From The Audio" or tool == "Target Sound Detection":
+            if tool in [
+                "Generate Image From User Input Text",
+                "Generate Text From The Audio",
+                "Target Sound Detection",
+            ]:
                 print("======>Current memory:\n %s" % self.agent.memory)
                 response = re.sub('(image/\S*png)', lambda m: f'![](/file={m.group(0)})*{m.group(0)}*', res['output'])
                 state = state + [(text, response)]
@@ -1224,7 +1226,7 @@ class ConversationBot:
                 response = res['output'] + f"![](/file={image_filename})*{image_filename}*"
                 state = state + [(text, response)]
                 print("Outputs:", state)
-                return state, state, gr.Audio.update(visible=False), gr.Video.update(visible=False), gr.Image.update(visible=False), gr.Button.update(visible=False)       
+                return state, state, gr.Audio.update(visible=False), gr.Video.update(visible=False), gr.Image.update(visible=False), gr.Button.update(visible=False)
             elif tool == "Audio Inpainting":
                 audio_filename = res['intermediate_steps'][0][0].tool_input
                 image_filename = res['intermediate_steps'][0][1]
@@ -1249,18 +1251,17 @@ class ConversationBot:
 
     def run_image_or_audio(self, file, state, txt):
         file_type = file.name[-3:]
+        AI_prompt = "Received.  "
         if file_type == "wav":
             print("===============Running run_audio =============")
             print("Inputs:", file, state)
             print("======>Previous memory:\n %s" % self.agent.memory)
-            audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+            audio_filename = os.path.join('audio', f"{str(uuid.uuid4())[:8]}.wav")
             # audio_load = whisper.load_audio(file.name)
             audio_load, sr = soundfile.read(file.name)
             soundfile.write(audio_filename, audio_load, samplerate = sr)
             description = self.a2t.inference(audio_filename)
-            Human_prompt = "\nHuman: provide an audio named {}. The description is: {}. This information helps you to understand this audio, but you should use tools to finish following tasks, " \
-                           "rather than directly imagine from my description. If you understand, say \"Received\". \n".format(audio_filename, description)
-            AI_prompt = "Received.  "
+            Human_prompt = f'\nHuman: provide an audio named {audio_filename}. The description is: {description}. This information helps you to understand this audio, but you should use tools to finish following tasks, rather than directly imagine from my description. If you understand, say \"Received\". \n'
             self.agent.memory.buffer = self.agent.memory.buffer + Human_prompt + 'AI: ' + AI_prompt
             print("======>Current memory:\n %s" % self.agent.memory)
             #state = state + [(f"<audio src=audio_filename controls=controls></audio>*{audio_filename}*", AI_prompt)]
@@ -1271,7 +1272,7 @@ class ConversationBot:
             print("===============Running run_image =============")
             print("Inputs:", file, state)
             print("======>Previous memory:\n %s" % self.agent.memory)
-            image_filename = os.path.join('image', str(uuid.uuid4())[0:8] + ".png")
+            image_filename = os.path.join('image', f"{str(uuid.uuid4())[:8]}.png")
             print("======>Auto Resize Image...")
             img = Image.open(file.name)
             width, height = img.size
@@ -1282,9 +1283,7 @@ class ConversationBot:
             img.save(image_filename, "PNG")
             print(f"Resize image form {width}x{height} to {width_new}x{height_new}")
             description = self.i2t.inference(image_filename)
-            Human_prompt = "\nHuman: provide a figure named {}. The description is: {}. This information helps you to understand this image, but you should use tools to finish following tasks, " \
-                           "rather than directly imagine from my description. If you understand, say \"Received\". \n".format(image_filename, description)
-            AI_prompt = "Received.  "
+            Human_prompt = f'\nHuman: provide a figure named {image_filename}. The description is: {description}. This information helps you to understand this image, but you should use tools to finish following tasks, rather than directly imagine from my description. If you understand, say \"Received\". \n'
             self.agent.memory.buffer = self.agent.memory.buffer + Human_prompt + 'AI: ' + AI_prompt
             print("======>Current memory:\n %s" % self.agent.memory)
             state = state + [(f"![](/file={image_filename})*{image_filename}*", AI_prompt)]
@@ -1292,7 +1291,7 @@ class ConversationBot:
             return state, state, gr.Audio.update(visible=False), gr.Video.update(visible=False)
 
     def speech(self, speech_input, state):
-        input_audio_filename = os.path.join('audio', str(uuid.uuid4())[0:8] + ".wav")
+        input_audio_filename = os.path.join('audio', f"{str(uuid.uuid4())[:8]}.wav")
         text = self.asr.translate_english(speech_input)
         print("Inputs:", text, state)
         print("======>Previous memory:\n %s" % self.agent.memory)
@@ -1303,11 +1302,13 @@ class ConversationBot:
             response = res['output']
             output_audio_filename = self.tts.inference(response)
             state = state + [(text, response)]
-            print("Outputs:", state)
-            return gr.Audio.update(value=None), gr.Audio.update(value=output_audio_filename,visible=True), state, gr.Video.update(visible=False)
         else:
             tool = res['intermediate_steps'][0][0].tool
-            if tool == "Generate Image From User Input Text" or tool == "Generate Text From The Audio" or tool == "Target Sound Detection":
+            if tool in [
+                "Generate Image From User Input Text",
+                "Generate Text From The Audio",
+                "Target Sound Detection",
+            ]:
                 print("======>Current memory:\n %s" % self.agent.memory)
                 response = re.sub('(image/\S*png)', lambda m: f'![](/file={m.group(0)})*{m.group(0)}*', res['output'])
                 output_audio_filename = self.tts.inference(res['output'])
@@ -1328,7 +1329,7 @@ class ConversationBot:
                 response = res['output'] + f"![](/file={image_filename})*{image_filename}*"
                 state = state + [(text, response)]
                 print("Outputs:", state)
-                return gr.Audio.update(value=None), gr.Audio.update(value=output_audio_filename,visible=True), state, gr.Video.update(visible=False)   
+                return gr.Audio.update(value=None), gr.Audio.update(value=output_audio_filename,visible=True), state, gr.Video.update(visible=False)
             elif tool == "Generate a talking human portrait video given a input Audio":
                 video_filename = res['intermediate_steps'][0][1]
                 print("======>Current memory:\n %s" % self.agent.memory)
@@ -1344,20 +1345,24 @@ class ConversationBot:
             output_audio_filename = merge_audio(self.tts.inference(Res), audio_filename)
             print(output_audio_filename)
             state = state + [(text, response)]
-            response = res['output'] 
-            print("Outputs:", state)
-            return gr.Audio.update(value=None), gr.Audio.update(value=output_audio_filename,visible=True), state, gr.Video.update(visible=False)
+            response = res['output']
+
+        print("Outputs:", state)
+        return gr.Audio.update(value=None), gr.Audio.update(value=output_audio_filename,visible=True), state, gr.Video.update(visible=False)
 
     def inpainting(self, state, audio_filename, image_filename):
         print("===============Running inpainting =============")
         print("Inputs:", state)
         print("======>Previous memory:\n %s" % self.agent.memory)
-        new_image_filename, new_audio_filename = self.inpaint.inference(audio_filename, image_filename)       
-        AI_prompt = "Here are the predict audio and the mel spectrum." + f"*{new_audio_filename}*" + f"![](/file={new_image_filename})*{new_image_filename}*"
+        new_image_filename, new_audio_filename = self.inpaint.inference(audio_filename, image_filename)
+        AI_prompt = (
+            f"Here are the predict audio and the mel spectrum.*{new_audio_filename}*"
+            + f"![](/file={new_image_filename})*{new_image_filename}*"
+        )
         output_audio_filename = self.tts.inference(AI_prompt)
-        self.agent.memory.buffer = self.agent.memory.buffer + 'AI: ' + AI_prompt
+        self.agent.memory.buffer = f'{self.agent.memory.buffer}AI: {AI_prompt}'
         print("======>Current memory:\n %s" % self.agent.memory)
-        state = state + [(f"Audio Inpainting", AI_prompt)]
+        state = state + [("Audio Inpainting", AI_prompt)]
         print("Outputs:", state)
         return state, state, gr.Image.update(visible=False), gr.Audio.update(value=new_audio_filename, visible=True), gr.Video.update(visible=False), gr.Button.update(visible=False)
 

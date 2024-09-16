@@ -68,14 +68,16 @@ class VocoderDataset(BaseDataset):
             self.avail_idxs = [idx for idx, s in enumerate(self.sizes) if
                                s - 2 * self.aux_context_window > self.batch_max_frames]
             print(f"| {len(self.sizes) - len(self.avail_idxs)} short items are skipped in {prefix} set.")
-            self.sizes = [s for idx, s in enumerate(self.sizes) if
-                          s - 2 * self.aux_context_window > self.batch_max_frames]
+            self.sizes = [
+                s
+                for s in self.sizes
+                if s - 2 * self.aux_context_window > self.batch_max_frames
+            ]
 
     def _get_item(self, index):
         if self.indexed_ds is None:
             self.indexed_ds = IndexedDataset(f'{self.data_dir}/{self.prefix}')
-        item = self.indexed_ds[index]
-        return item
+        return self.indexed_ds[index]
 
     def __getitem__(self, index):
         index = self.avail_idxs[index]
@@ -148,8 +150,7 @@ class VocoderDataset(BaseDataset):
             p_batch, f0_batch = None, None
 
         # make input noise signal batch tensor
-        if self.hparams['use_wav']: z_batch = torch.randn(y_batch.size())  # (B, 1, T)
-        else: z_batch=[]
+        z_batch = torch.randn(y_batch.size()) if self.hparams['use_wav'] else []
         return {
             'z': z_batch,
             'mels': c_batch,

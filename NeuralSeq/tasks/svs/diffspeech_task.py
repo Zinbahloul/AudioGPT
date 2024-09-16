@@ -34,7 +34,7 @@ class DiffSpeechTask(DiffFsTask):
             utils.load_ckpt(self.model.fs2, hparams['fs2_ckpt'], 'model', strict=True)
         # self.model.fs2.decoder = None
         for k, v in self.model.fs2.named_parameters():
-            if not 'predictor' in k:
+            if 'predictor' not in k:
                 v.requires_grad = False
 
     def build_optimizer(self, model):
@@ -56,7 +56,7 @@ class DiffSpeechTask(DiffFsTask):
         # fs2_mel = sample['fs2_mels']
         spk_embed = sample.get('spk_embed') if not hparams['use_spk_id'] else sample.get('spk_ids')
         if hparams['pitch_type'] == 'cwt':
-            cwt_spec = sample[f'cwt_spec']
+            cwt_spec = sample['cwt_spec']
             f0_mean = sample['f0_mean']
             f0_std = sample['f0_std']
             sample['f0_cwt'] = f0 = model.cwt2f0_norm(cwt_spec, f0_mean, f0_std, mel2ph)
@@ -72,13 +72,9 @@ class DiffSpeechTask(DiffFsTask):
             self.add_pitch_loss(output, sample, losses)
         if hparams['use_energy_embed']:
             self.add_energy_loss(output['energy_pred'], energy, losses)
-        if not return_output:
-            return losses
-        else:
-            return losses, output
+        return losses if not return_output else (losses, output)
 
     def validation_step(self, sample, batch_idx):
-        outputs = {}
         txt_tokens = sample['txt_tokens']  # [B, T_t]
 
         energy = sample['energy']
@@ -87,8 +83,7 @@ class DiffSpeechTask(DiffFsTask):
         f0 = sample['f0']
         uv = sample['uv']
 
-        outputs['losses'] = {}
-
+        outputs = {'losses': {}}
         outputs['losses'], model_out = self.run_model(self.model, sample, return_output=True, infer=False)
 
 

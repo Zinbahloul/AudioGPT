@@ -17,13 +17,19 @@ import config
 def _load_metrics0(filename, sample_rate, window_size, hop_size, mel_bins, fmin, 
     fmax, data_type, model_type, loss_type, balanced, augmentation, batch_size):
     workspace0 = '/mnt/cephfs_new_wj/speechsv/qiuqiang.kong/workspaces/pub_audioset_tagging_cnn_transfer'
-    statistics_path = os.path.join(workspace0, 'statistics', filename, 
-        'sample_rate={},window_size={},hop_size={},mel_bins={},fmin={},fmax={}'.format(
-        sample_rate, window_size, hop_size, mel_bins, fmin, fmax), 
-        'data_type={}'.format(data_type), model_type, 
-        'loss_type={}'.format(loss_type), 'balanced={}'.format(balanced), 
-        'augmentation={}'.format(augmentation), 'batch_size={}'.format(batch_size), 
-        'statistics.pkl')
+    statistics_path = os.path.join(
+        workspace0,
+        'statistics',
+        filename,
+        f'sample_rate={sample_rate},window_size={window_size},hop_size={hop_size},mel_bins={mel_bins},fmin={fmin},fmax={fmax}',
+        f'data_type={data_type}',
+        model_type,
+        f'loss_type={loss_type}',
+        f'balanced={balanced}',
+        f'augmentation={augmentation}',
+        f'batch_size={batch_size}',
+        'statistics.pkl',
+    )
 
     statistics_dict = cPickle.load(open(statistics_path, 'rb'))
 
@@ -31,7 +37,7 @@ def _load_metrics0(filename, sample_rate, window_size, hop_size, mel_bins, fmin,
     bal_map = np.mean(bal_map, axis=-1)
     test_map = np.array([statistics['average_precision'] for statistics in statistics_dict['test']])    # (N, classes_num)
     test_map = np.mean(test_map, axis=-1)
-    legend = '{}, {}, bal={}, aug={}, bs={}'.format(data_type, model_type, balanced, augmentation, batch_size)
+    legend = f'{data_type}, {model_type}, bal={balanced}, aug={augmentation}, bs={batch_size}'
 
     # return {'bal_map': bal_map, 'test_map': test_map, 'legend': legend}
     return bal_map, test_map, legend
@@ -40,13 +46,19 @@ def _load_metrics0(filename, sample_rate, window_size, hop_size, mel_bins, fmin,
 def _load_metrics0_classwise(filename, sample_rate, window_size, hop_size, mel_bins, fmin, 
     fmax, data_type, model_type, loss_type, balanced, augmentation, batch_size):
     workspace0 = '/mnt/cephfs_new_wj/speechsv/qiuqiang.kong/workspaces/pub_audioset_tagging_cnn_transfer'
-    statistics_path = os.path.join(workspace0, 'statistics', filename, 
-        'sample_rate={},window_size={},hop_size={},mel_bins={},fmin={},fmax={}'.format(
-        sample_rate, window_size, hop_size, mel_bins, fmin, fmax), 
-        'data_type={}'.format(data_type), model_type, 
-        'loss_type={}'.format(loss_type), 'balanced={}'.format(balanced), 
-        'augmentation={}'.format(augmentation), 'batch_size={}'.format(batch_size), 
-        'statistics.pkl')
+    statistics_path = os.path.join(
+        workspace0,
+        'statistics',
+        filename,
+        f'sample_rate={sample_rate},window_size={window_size},hop_size={hop_size},mel_bins={mel_bins},fmin={fmin},fmax={fmax}',
+        f'data_type={data_type}',
+        model_type,
+        f'loss_type={loss_type}',
+        f'balanced={balanced}',
+        f'augmentation={augmentation}',
+        f'batch_size={batch_size}',
+        'statistics.pkl',
+    )
 
     statistics_dict = cPickle.load(open(statistics_path, 'rb'))
 
@@ -56,13 +68,19 @@ def _load_metrics0_classwise(filename, sample_rate, window_size, hop_size, mel_b
 def _load_metrics0_classwise2(filename, sample_rate, window_size, hop_size, mel_bins, fmin, 
     fmax, data_type, model_type, loss_type, balanced, augmentation, batch_size):
     workspace0 = '/mnt/cephfs_new_wj/speechsv/qiuqiang.kong/workspaces/pub_audioset_tagging_cnn_transfer'
-    statistics_path = os.path.join(workspace0, 'statistics', filename, 
-        'sample_rate={},window_size={},hop_size={},mel_bins={},fmin={},fmax={}'.format(
-        sample_rate, window_size, hop_size, mel_bins, fmin, fmax), 
-        'data_type={}'.format(data_type), model_type, 
-        'loss_type={}'.format(loss_type), 'balanced={}'.format(balanced), 
-        'augmentation={}'.format(augmentation), 'batch_size={}'.format(batch_size), 
-        'statistics.pkl')
+    statistics_path = os.path.join(
+        workspace0,
+        'statistics',
+        filename,
+        f'sample_rate={sample_rate},window_size={window_size},hop_size={hop_size},mel_bins={mel_bins},fmin={fmin},fmax={fmax}',
+        f'data_type={data_type}',
+        model_type,
+        f'loss_type={loss_type}',
+        f'balanced={balanced}',
+        f'augmentation={augmentation}',
+        f'batch_size={batch_size}',
+        'statistics.pkl',
+    )
 
     statistics_dict = cPickle.load(open(statistics_path, 'rb'))
 
@@ -76,16 +94,22 @@ def _load_metrics0_classwise2(filename, sample_rate, window_size, hop_size, mel_
 def _load_metrics_classwise(filename, sample_rate, window_size, hop_size, mel_bins, fmin, 
     fmax, data_type, model_type, loss_type, balanced, augmentation, batch_size):
     workspace = '/mnt/cephfs_new_wj/speechsv/kongqiuqiang/workspaces/cvssp/pub_audioset_tagging_cnn'
-    statistics_path = os.path.join(workspace, 'statistics', filename, 
-        'sample_rate={},window_size={},hop_size={},mel_bins={},fmin={},fmax={}'.format(
-        sample_rate, window_size, hop_size, mel_bins, fmin, fmax), 
-        'data_type={}'.format(data_type), model_type, 
-        'loss_type={}'.format(loss_type), 'balanced={}'.format(balanced), 
-        'augmentation={}'.format(augmentation), 'batch_size={}'.format(batch_size), 
-        'statistics.pkl')
+    statistics_path = os.path.join(
+        workspace,
+        'statistics',
+        filename,
+        f'sample_rate={sample_rate},window_size={window_size},hop_size={hop_size},mel_bins={mel_bins},fmin={fmin},fmax={fmax}',
+        f'data_type={data_type}',
+        model_type,
+        f'loss_type={loss_type}',
+        f'balanced={balanced}',
+        f'augmentation={augmentation}',
+        f'batch_size={batch_size}',
+        'statistics.pkl',
+    )
 
     statistics_dict = cPickle.load(open(statistics_path, 'rb'))
-    
+
     k = 300
     mAP = np.mean(statistics_dict['test'][k]['average_precision'])
     mAUC = np.mean(statistics_dict['test'][k]['auc'])
@@ -1411,20 +1435,19 @@ def crop_label(label):
     max_len = 16
     if len(label) <= max_len:
         return label
-    else:
-        words = label.split(' ')
-        cropped_label = ''
-        for w in words:
-            if len(cropped_label + ' ' + w) > max_len:
-                break
-            else:
-                cropped_label += ' {}'.format(w)
+    words = label.split(' ')
+    cropped_label = ''
+    for w in words:
+        if len(f'{cropped_label} {w}') > max_len:
+            break
+        else:
+            cropped_label += f' {w}'
     return cropped_label
 
 def add_comma(integer):
     integer = int(integer)
     if integer >= 1000:
-        return str(integer // 1000) + ',' + str(integer % 1000)
+        return f'{str(integer // 1000)},{str(integer % 1000)}'
     else:
         return str(integer)
 
@@ -1490,8 +1513,8 @@ def plot_class_iteration(args):
 def _load_old_metrics(workspace, filename, iteration, data_type):
     
     assert data_type in ['train', 'test']
-    
-    stat_name = "stat_{}_iters.p".format(iteration)
+
+    stat_name = f"stat_{iteration}_iters.p"
 
     # Load stats
     stat_path = os.path.join(workspace, "stats", filename, data_type, stat_name)
@@ -1504,7 +1527,7 @@ def _load_old_metrics(workspace, filename, iteration, data_type):
     recalls = [stat['recalls'] for stat in stats]
     maps = np.array([stat['AP'] for stat in stats])
     aucs = np.array([stat['auc'] for stat in stats])
-    
+
     return {'average_precision': maps, 'AUC': aucs}
 
 def _sort(ys):
@@ -1525,19 +1548,19 @@ def get_avg_stats(workspace, bgn_iter, fin_iter, interval_iter, filename, data_t
     
     assert data_type in ['train', 'test']
     bal_train_hdf5 = "/vol/vssp/msos/audioset/packed_features/bal_train.h5"
-    eval_hdf5 = "/vol/vssp/msos/audioset/packed_features/eval.h5"
     unbal_train_hdf5 = "/vol/vssp/msos/audioset/packed_features/unbal_train.h5"
-    
+
     t1 = time.time()
     if data_type == 'test':
+        eval_hdf5 = "/vol/vssp/msos/audioset/packed_features/eval.h5"
         (te_x, te_y, te_id_list) = load_data(eval_hdf5)
     elif data_type == 'train':
         (te_x, te_y, te_id_list) = load_data(bal_train_hdf5)
     y = te_y
-    
+
     prob_dir = os.path.join(workspace, "probs", filename, data_type)
     names = os.listdir(prob_dir)
-    
+
     probs = []
     iters = range(bgn_iter, fin_iter, interval_iter)
     for iter in iters:
@@ -1547,29 +1570,29 @@ def get_avg_stats(workspace, bgn_iter, fin_iter, interval_iter, filename, data_t
         except:
             prob = cPickle.load(open(pickle_path, 'rb'), encoding='latin1')
         probs.append(prob)
-    
+
     avg_prob = np.mean(np.array(probs), axis=0)
-    
+
     n_out = y.shape[1]
     stats = []
+    # eer = pp_data.eer(avg_prob[:, k], y[:, k])
+
+    skip = 1000
     for k in range(n_out): # around 7 seconds
         (precisions, recalls, thresholds) = metrics.precision_recall_curve(y[:, k], avg_prob[:, k])
         avg_precision = metrics.average_precision_score(y[:, k], avg_prob[:, k], average=None)
         (fpr, tpr, thresholds) = metrics.roc_curve(y[:, k], avg_prob[:, k])
         auc = metrics.roc_auc_score(y[:, k], avg_prob[:, k], average=None)
-        # eer = pp_data.eer(avg_prob[:, k], y[:, k])
-        
-        skip = 1000
         dict = {'precisions': precisions[0::skip], 'recalls': recalls[0::skip], 'AP': avg_precision, 
                 'fpr': fpr[0::skip], 'fnr': 1. - tpr[0::skip], 'auc': auc}
-        
+
         stats.append(dict)
-        
+
     mAPs = np.array([e['AP'] for e in stats])
     aucs = np.array([e['auc'] for e in stats])
-        
-    print("Get avg time: {}".format(time.time() - t1))
-        
+
+    print(f"Get avg time: {time.time() - t1}")
+
     return {'average_precision': mAPs, 'auc': aucs}
 
 
@@ -1593,21 +1616,18 @@ def _samples_num_per_class():
 def get_label_quality():
     
     rate_csv = '/vol/vssp/msos/qk/workspaces/pub_audioset_tagging_cnn_transfer/metadata/qa_true_counts.csv'
-    
+
     with open(rate_csv, 'r') as f:
         reader = csv.reader(f, delimiter=',')
         lis = list(reader)
-        
+
     rates = []
 
     for n in range(1, len(lis)):
         li = lis[n]
-        if float(li[1]) == 0:
-            rate = None
-        else:
-            rate = float(li[2]) / float(li[1])
+        rate = None if float(li[1]) == 0 else float(li[2]) / float(li[1])
         rates.append(rate)
-    
+
     return rates
 
 
@@ -1688,25 +1708,25 @@ def prepare_plot_long_4_rows(sorted_lbs):
     ax2a.set_xlim(K, 2 * K)
     ax3a.set_xlim(2 * K, 3 * K)
     ax4a.set_xlim(3 * K, N)
-    
+
     truncated_sorted_lbs = []
     for lb in sorted_lbs:
-        lb = lb[0 : 25]
+        lb = lb[:25]
         words = lb.split(' ')
         if len(words[-1]) < 3:
-            lb = ' '.join(words[0:-1])
+            lb = ' '.join(words[:-1])
         truncated_sorted_lbs.append(lb)
-  
+
     ax1a.grid(which='major', axis='x', linestyle='-', alpha=0.3)
     ax2a.grid(which='major', axis='x', linestyle='-', alpha=0.3)
     ax3a.grid(which='major', axis='x', linestyle='-', alpha=0.3)
     ax4a.grid(which='major', axis='x', linestyle='-', alpha=0.3)
-    
+
     ax1a.set_yscale('log')
     ax2a.set_yscale('log')
     ax3a.set_yscale('log')
     ax4a.set_yscale('log')
-    
+
     ax1b = ax1a.twinx()
     ax2b = ax2a.twinx()
     ax3b = ax3a.twinx()
@@ -1719,34 +1739,36 @@ def prepare_plot_long_4_rows(sorted_lbs):
     ax2b.set_ylabel('Average precision')
     ax3b.set_ylabel('Average precision')
     ax4b.set_ylabel('Average precision')
-    
+
     ax1b.yaxis.grid(color='grey', linestyle='--', alpha=0.5)
     ax2b.yaxis.grid(color='grey', linestyle='--', alpha=0.5)
     ax3b.yaxis.grid(color='grey', linestyle='--', alpha=0.5)
     ax4b.yaxis.grid(color='grey', linestyle='--', alpha=0.5)
-    
+
     ax1a.xaxis.set_ticks(np.arange(K))
-    ax1a.xaxis.set_ticklabels(truncated_sorted_lbs[0:K], rotation=90, fontsize=fontsize)
+    ax1a.xaxis.set_ticklabels(
+        truncated_sorted_lbs[:K], rotation=90, fontsize=fontsize
+    )
     ax1a.xaxis.tick_bottom()
     ax1a.set_ylabel("Number of audio clips")
-    
+
     ax2a.xaxis.set_ticks(np.arange(K, 2*K))
     ax2a.xaxis.set_ticklabels(truncated_sorted_lbs[K:2*K], rotation=90, fontsize=fontsize)
     ax2a.xaxis.tick_bottom()
     # ax2a.tick_params(left='off', which='both')
     ax2a.set_ylabel("Number of audio clips")
-    
+
     ax3a.xaxis.set_ticks(np.arange(2*K, 3*K))
     ax3a.xaxis.set_ticklabels(truncated_sorted_lbs[2*K:3*K], rotation=90, fontsize=fontsize)
     ax3a.xaxis.tick_bottom()
     ax3a.set_ylabel("Number of audio clips")
-    
+
     ax4a.xaxis.set_ticks(np.arange(3*K, N))
     ax4a.xaxis.set_ticklabels(truncated_sorted_lbs[3*K:], rotation=90, fontsize=fontsize)
     ax4a.xaxis.tick_bottom()
     # ax4a.tick_params(left='off', which='both')
     ax4a.set_ylabel("Number of audio clips")
-    
+
     ax1a.spines['right'].set_visible(False)
     ax1b.spines['right'].set_visible(False)
     ax2a.spines['left'].set_visible(False)
@@ -1759,9 +1781,9 @@ def prepare_plot_long_4_rows(sorted_lbs):
     ax3b.spines['right'].set_visible(False)
     ax4a.spines['left'].set_visible(False)
     ax4b.spines['left'].set_visible(False)
-    
+
     plt.subplots_adjust(hspace = 0.8)
-    
+
     return ax1a, ax2a, ax3a, ax4a, ax1b, ax2b, ax3b, ax4b
 
 def _scatter_4_rows(x, ax, ax2, ax3, ax4, s, c, marker='.', alpha=1.):
@@ -1782,7 +1804,7 @@ def _plot_4_rows(x, ax, ax2, ax3, ax4, c, linewidth=1.0, alpha=1.0, label=""):
 def plot_long_fig(args):
     # Arguments & parameters
     workspace = args.workspace
-    
+
     # Paths
     stat_path = os.path.join(workspace, 'results', 'stats_for_paper.pkl')
     save_out_path = 'results/long_fig.pdf'
@@ -1798,13 +1820,13 @@ def plot_long_fig(args):
     audio_clips_per_class = audio_clips_per_class[sorted_indexes]
 
     (ax1a, ax2a, ax3a, ax4a, ax1b, ax2b, ax3b, ax4b) = prepare_plot_long_4_rows(sorted_labels)
- 
+
     # plot the same data on both axes
     ax1a.bar(np.arange(N), audio_clips_per_class, alpha=0.3)
     ax2a.bar(np.arange(N), audio_clips_per_class, alpha=0.3)
     ax3a.bar(np.arange(N), audio_clips_per_class, alpha=0.3)
     ax4a.bar(np.arange(N), audio_clips_per_class, alpha=0.3)
-   
+
     maps_avg_instances = stats['averaging_instance_system_avg_9_probs_from_10000_to_50000_iterations']['eval']['average_precision']
     maps_avg_instances = maps_avg_instances[sorted_indexes]
 
@@ -1822,7 +1844,7 @@ def plot_long_fig(args):
     _scatter_4_rows(maps_cnn13, ax1b, ax2b, ax3b, ax4b, s=5, c='r')
     _scatter_4_rows(maps_mobilenetv1, ax1b, ax2b, ax3b, ax4b, s=5, c='b')
     _scatter_4_rows(maps_logmel_wavegram_cnn, ax1b, ax2b, ax3b, ax4b, s=5, c='g')
-    
+
     linewidth = 0.7
     line0te = _plot_4_rows(maps_avg_instances, ax1b, ax2b, ax3b, ax4b, c='k', linewidth=linewidth, label='AP with averaging instances (baseline)')
     line1te = _plot_4_rows(maps_cnn13, ax1b, ax2b, ax3b, ax4b, c='r', linewidth=linewidth, label='AP with CNN14')
@@ -1834,26 +1856,54 @@ def plot_long_fig(args):
     for k in range(len(sorted_rate)):
         if sorted_rate[k] and sorted_rate[k] == 1:
             sorted_rate[k] = 0.99
-    
+
     ax1b.scatter(np.arange(N)[sorted_rate != None], sorted_rate[sorted_rate != None], s=12, c='r', linewidth=0.8, marker='+')
     ax2b.scatter(np.arange(N)[sorted_rate != None], sorted_rate[sorted_rate != None], s=12, c='r', linewidth=0.8, marker='+')
     ax3b.scatter(np.arange(N)[sorted_rate != None], sorted_rate[sorted_rate != None], s=12, c='r', linewidth=0.8, marker='+')
     line_label_quality = ax4b.scatter(np.arange(N)[sorted_rate != None], sorted_rate[sorted_rate != None], s=12, c='r', linewidth=0.8, marker='+', label='Label quality')
-    ax1b.scatter(np.arange(N)[sorted_rate == None], 0.5 * np.ones(len(np.arange(N)[sorted_rate == None])), s=12, c='r', linewidth=0.8, marker='_')
-    ax2b.scatter(np.arange(N)[sorted_rate == None], 0.5 * np.ones(len(np.arange(N)[sorted_rate == None])), s=12, c='r', linewidth=0.8, marker='_')
-    ax3b.scatter(np.arange(N)[sorted_rate == None], 0.5 * np.ones(len(np.arange(N)[sorted_rate == None])), s=12, c='r', linewidth=0.8, marker='_')
-    ax4b.scatter(np.arange(N)[sorted_rate == None], 0.5 * np.ones(len(np.arange(N)[sorted_rate == None])), s=12, c='r', linewidth=0.8, marker='_')
-    
+    ax1b.scatter(
+        np.arange(N)[sorted_rate is None],
+        0.5 * np.ones(len(np.arange(N)[sorted_rate is None])),
+        s=12,
+        c='r',
+        linewidth=0.8,
+        marker='_',
+    )
+    ax2b.scatter(
+        np.arange(N)[sorted_rate is None],
+        0.5 * np.ones(len(np.arange(N)[sorted_rate is None])),
+        s=12,
+        c='r',
+        linewidth=0.8,
+        marker='_',
+    )
+    ax3b.scatter(
+        np.arange(N)[sorted_rate is None],
+        0.5 * np.ones(len(np.arange(N)[sorted_rate is None])),
+        s=12,
+        c='r',
+        linewidth=0.8,
+        marker='_',
+    )
+    ax4b.scatter(
+        np.arange(N)[sorted_rate is None],
+        0.5 * np.ones(len(np.arange(N)[sorted_rate is None])),
+        s=12,
+        c='r',
+        linewidth=0.8,
+        marker='_',
+    )
+
     plt.legend(handles=[line0te, line1te, line2te, line3te, line_label_quality], fontsize=6, loc=1)
-    
+
     plt.savefig(save_out_path)
-    print('Save fig to {}'.format(save_out_path))
+    print(f'Save fig to {save_out_path}')
  
 def plot_flops(args):
 
     # Arguments & parameters
     workspace = args.workspace
-    
+
     # Paths
     save_out_path = 'results_map/flops.pdf'
     create_folder(os.path.dirname(save_out_path))
@@ -1894,7 +1944,7 @@ def plot_flops(args):
     plt.tight_layout(0, 0, 0)
 
     plt.savefig(save_out_path)
-    print('Write out figure to {}'.format(save_out_path))
+    print(f'Write out figure to {save_out_path}')
 
 
 def spearman(args):

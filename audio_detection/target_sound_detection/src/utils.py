@@ -27,8 +27,7 @@ def parse_config_or_kwargs(config_file, **kwargs):
     """
     with open(config_file) as con_read:
         yaml_config = yaml.load(con_read, Loader=yaml.FullLoader)
-    arguments = dict(yaml_config, **kwargs)
-    return arguments
+    return dict(yaml_config, **kwargs)
 
 
 def find_contiguous_regions(activity_array): # in this part, if you cannot understand the binary operation, I think you can write a O(n) complexity method
@@ -208,16 +207,11 @@ def median_filter(x, window_size, threshold=0.5):
 
 
 def _decode_with_timestamps(events,labels):
-    result_labels = []
     # print('.......')
     # print('labels ',labels.shape)
     # print(labels)
     change_indices = find_contiguous_regions(labels)
-    # print(change_indices)
-    # assert 1==2
-    for row in change_indices:
-        result_labels.append((events,row[0], row[1]))
-    return result_labels
+    return [(events, row[0], row[1]) for row in change_indices]
 
 def inverse_transform_labels(encoder, pred):
     if pred.ndim == 3:
@@ -244,8 +238,9 @@ def double_threshold(x, high_thres, low_thres, n_connect=1):
     :param low_thres: Low threshold value
     :param n_connect: Distance of <= n clusters will be merged
     """
-    assert x.ndim <= 3, "Whoops something went wrong with the input ({}), check if its <= 3 dims".format(
-        x.shape)
+    assert (
+        x.ndim <= 3
+    ), f"Whoops something went wrong with the input ({x.shape}), check if its <= 3 dims"
     if x.ndim == 3:
         apply_dim = 1
     elif x.ndim < 3:
@@ -324,11 +319,9 @@ def connect_(pairs, n=1):
         return []
     start_, end_ = pairs[0]
     new_pairs = []
-    for i, (next_item, cur_item) in enumerate(zip(pairs[1:], pairs[0:])):
+    for next_item, cur_item in zip(pairs[1:], pairs[:]):
         end_ = next_item[1]
-        if next_item[0] - cur_item[1] <= n:
-            pass
-        else:
+        if next_item[0] - cur_item[1] > n:
             new_pairs.append((start_, cur_item[1]))
             start_ = next_item[0]
     new_pairs.append((start_, end_))
@@ -345,8 +338,7 @@ def upgrade_resolution(arr, scale):
     x = np.arange(0, arr.shape[0])
     f = interp1d(x, arr, kind='linear', axis=0, fill_value='extrapolate')
     scale_x = np.arange(0, arr.shape[0], 1 / scale)
-    up_scale = f(scale_x)
-    return up_scale
+    return f(scale_x)
 # a = [0.1,0.2,0.3,0.8,0.4,0.1,0.3,0.9,0.4]
 # a = np.array(a)
 # b = a>0.2

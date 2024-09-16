@@ -27,9 +27,9 @@ class TimeWarperFunction(th.autograd.Function):
         idx_right = th.clamp(warpfield.ceil().type(th.long), max=input.shape[-1]-1)
         # compute weight for linear interpolation
         alpha = warpfield - warpfield.floor()
-        # linear interpolation
-        output = (1 - alpha) * th.gather(input, 2, idx_left) + alpha * th.gather(input, 2, idx_right)
-        return output
+        return (1 - alpha) * th.gather(input, 2, idx_left) + alpha * th.gather(
+            input, 2, idx_right
+        )
 
     @staticmethod
     def backward(ctx, grad_output):
@@ -67,8 +67,7 @@ class TimeWarper(nn.Module):
         :return: the warped signal (B x 2 x T)
         '''
         warpfield = self._to_absolute_positions(warpfield, input.shape[-1])
-        warped = self.warper(input, warpfield)
-        return warped
+        return self.warper(input, warpfield)
 
 
 class MonotoneTimeWarper(TimeWarper):
@@ -82,10 +81,7 @@ class MonotoneTimeWarper(TimeWarper):
         warpfield = self._to_absolute_positions(warpfield, input.shape[-1])
         # ensure monotonicity: each warp must be at least as big as previous_warp-1
         warpfield = th.cummax(warpfield, dim=-1)[0]
-        # print('warpfield ',warpfield.shape)
-        # warp
-        warped = self.warper(input, warpfield)
-        return warped
+        return self.warper(input, warpfield)
 
 
 class GeometricTimeWarper(TimeWarper):
@@ -97,8 +93,7 @@ class GeometricTimeWarper(TimeWarper):
     def displacements2warpfield(self, displacements, seq_length):
         distance = th.sum(displacements**2, dim=2) ** 0.5
         distance = F.interpolate(distance, size=seq_length)
-        warpfield = -distance / 343.0 * self.sampling_rate
-        return warpfield
+        return -distance / 343.0 * self.sampling_rate
 
     def forward(self, input, displacements):
         '''
@@ -107,7 +102,4 @@ class GeometricTimeWarper(TimeWarper):
         :return: the warped signal (B x 2 x T)
         '''
         warpfield = self.displacements2warpfield(displacements, input.shape[-1])
-        # print('Ge warpfield ', warpfield.shape)
-        # assert 1==2
-        warped = super().forward(input, warpfield)
-        return warped
+        return super().forward(input, warpfield)

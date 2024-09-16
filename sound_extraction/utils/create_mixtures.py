@@ -81,10 +81,8 @@ def activelev_torch(*args):
     '''
         need to update like matlab
     '''
-    res = []
     args = args[0]
-    for each in args:
-        res.append(torch.max(torch.abs(each)))
+    res = [torch.max(torch.abs(each)) for each in args]
     return max(res)
 
 def uniform_torch(lower, upper):

@@ -14,15 +14,13 @@ class Vocabulary(object):
         self.idx = 0
 
     def add_word(self, word):
-        if not word in self.word2idx:
+        if word not in self.word2idx:
             self.word2idx[word] = self.idx
             self.idx2word[self.idx] = word
             self.idx += 1
 
     def __call__(self, word):
-        if not word in self.word2idx:
-            return self.word2idx["<unk>"]
-        return self.word2idx[word]
+        return self.word2idx[word] if word in self.word2idx else self.word2idx["<unk>"]
 
     def __len__(self):
         return len(self.word2idx)
@@ -62,11 +60,7 @@ def build_vocab(input_json: str,
 """
     data = json.load(open(input_json, "r"))["audios"]
     counter = Counter()
-    if retokenize:
-        pretokenized = False
-    else:
-        pretokenized = "tokens" in data[0]["captions"][0]
-    
+    pretokenized = False if retokenize else "tokens" in data[0]["captions"][0]
     if zh:
         from nltk.parse.corenlp import CoreNLPParser
         from zhon.hanzi import punctuation
@@ -80,30 +74,26 @@ def build_vocab(input_json: str,
                     caption = data[audio_idx]["captions"][cap_idx]["caption"]
                     # Remove all punctuations
                     if not keep_punctuation:
-                        caption = re.sub("[{}]".format(punctuation), "", caption)
-                    if character_level:
-                        tokens = list(caption)
-                    else:
-                        tokens = list(parser.tokenize(caption))
+                        caption = re.sub(f"[{punctuation}]", "", caption)
+                    tokens = list(caption) if character_level else list(parser.tokenize(caption))
                     data[audio_idx]["captions"][cap_idx]["tokens"] = " ".join(tokens)
                 counter.update(tokens)
+    elif pretokenized:
+        for audio_idx in tqdm(range(len(data)), leave=False, ascii=True):
+            for cap_idx in range(len(data[audio_idx]["captions"])):
+                tokens = data[audio_idx]["captions"][cap_idx]["tokens"].split()
+                counter.update(tokens)
     else:
-        if pretokenized:
-            for audio_idx in tqdm(range(len(data)), leave=False, ascii=True):
-                for cap_idx in range(len(data[audio_idx]["captions"])):
-                    tokens = data[audio_idx]["captions"][cap_idx]["tokens"].split()
-                    counter.update(tokens)
-        else:
-            import spacy
-            tokenizer = spacy.load("en_core_web_sm", disable=["parser", "ner"])
-            for audio_idx in tqdm(range(len(data)), leave=False, ascii=True):
-                captions = data[audio_idx]["captions"]
-                for cap_idx in range(len(captions)):
-                    caption = captions[cap_idx]["caption"]
-                    doc = tokenizer(caption)
-                    tokens = " ".join([str(token).lower() for token in doc])
-                    data[audio_idx]["captions"][cap_idx]["tokens"] = tokens
-                    counter.update(tokens.split(" "))
+        import spacy
+        tokenizer = spacy.load("en_core_web_sm", disable=["parser", "ner"])
+        for audio_idx in tqdm(range(len(data)), leave=False, ascii=True):
+            captions = data[audio_idx]["captions"]
+            for cap_idx in range(len(captions)):
+                caption = captions[cap_idx]["caption"]
+                doc = tokenizer(caption)
+                tokens = " ".join([str(token).lower() for token in doc])
+                data[audio_idx]["captions"][cap_idx]["tokens"] = tokens
+                counter.update(tokens.split(" "))
 
     if not pretokenized:
         if output_json is None:
@@ -144,8 +134,8 @@ def process(input_json: str,
         keep_punctuation=keep_punctuation, host_address=host_address,
         character_level=character_level, retokenize=retokenize, zh=zh)
     pickle.dump(vocabulary, open(output_file, "wb"))
-    logging.info("Total vocabulary size: {}".format(len(vocabulary)))
-    logging.info("Saved vocab to '{}'".format(output_file))
+    logging.info(f"Total vocabulary size: {len(vocabulary)}")
+    logging.info(f"Saved vocab to '{output_file}'")
 
 
 if __name__ == '__main__':

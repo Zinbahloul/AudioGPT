@@ -36,8 +36,7 @@ class GeometricWarper(nn.Module):
         # compute displacements between transmitter mouth and receiver left/right ear
         displacement_left = view[:, 0:3, :] + transmitter_mouth - left_ear_offset[None, :, None]
         displacement_right = view[:, 0:3, :] + transmitter_mouth - right_ear_offset[None, :, None]
-        displacement = th.stack([displacement_left, displacement_right], dim=1)
-        return displacement
+        return th.stack([displacement_left, displacement_right], dim=1)
 
     def _warpfield(self, view, seq_length):
         return self.warper.displacements2warpfield(self._3d_displacements(view), seq_length)
@@ -80,8 +79,7 @@ class Warpnet(nn.Module):
         warpfield = geometric_warpfield + neural_warpfield
         # ensure causality
         warpfield = -F.relu(-warpfield) # the predicted warp
-        warped = self.neural_warper(th.cat([mono, mono], dim=1), warpfield)
-        return warped
+        return self.neural_warper(th.cat([mono, mono], dim=1), warpfield)
 
 class BinauralNetwork(Net):
     def __init__(self,
@@ -103,8 +101,4 @@ class BinauralNetwork(Net):
                  intermediate: a two-channel audio signal obtained from the output of each intermediate layer
                                as a list of B x 2 x T tensors
         '''
-        # print('mono ', mono.shape)
-        # print('view ', view.shape)
-        warped = self.warper(mono, view)
-        # print('warped ', warped.shape)
-        return warped
+        return self.warper(mono, view)

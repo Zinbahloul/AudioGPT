@@ -12,7 +12,7 @@ class VCTKPreAlign(BasePreAlign):
             spk = item_name.split("_")[0]
             txt_fn = wav_fn.split("/")
             txt_fn[-1] = f'{item_name}.txt'
-            txt_fn[-3] = f'txt'
+            txt_fn[-3] = 'txt'
             txt_fn = "/".join(txt_fn)
             if os.path.exists(txt_fn) and os.path.exists(wav_fn):
                 yield item_name, wav_fn, (self.load_txt, txt_fn), spk

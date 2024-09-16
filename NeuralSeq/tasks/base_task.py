@@ -54,8 +54,7 @@ class BaseDataset(torch.utils.data.Dataset):
     def size(self, index):
         """Return an example's size as a float or tuple. This value is used when
         filtering a dataset with ``--max-positions``."""
-        size = min(self._sizes[index], hparams['max_frames'])
-        return size
+        return min(self._sizes[index], hparams['max_frames'])
 
     def ordered_indices(self):
         """Return an ordered list of indices. Batches will be constructed based
@@ -349,12 +348,12 @@ class BaseTask(nn.Module):
                     norm = param_norm ** (1 / norm_type)
 
                     grad = round(norm.data.cpu().numpy().flatten()[0], 3)
-                    results['grad_{}_norm_{}'.format(norm_type, name)] = grad
+                    results[f'grad_{norm_type}_norm_{name}'] = grad
                 except Exception:
                     # this param had no grad
                     pass
 
         total_norm = total_norm ** (1. / norm_type)
         grad = round(total_norm.data.cpu().numpy().flatten()[0], 3)
-        results['grad_{}_norm_total'.format(norm_type)] = grad
+        results[f'grad_{norm_type}_norm_total'] = grad
         return results

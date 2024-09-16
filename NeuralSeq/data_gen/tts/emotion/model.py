@@ -55,10 +55,7 @@ class EmotionEncoder(nn.Module):
         # We take only the hidden state of the last layer
         embeds_raw = self.relu(self.linear(hidden[-1]))
 
-        # L2-normalize it
-        embeds = embeds_raw / torch.norm(embeds_raw, dim=1, keepdim=True)
-
-        return embeds
+        return embeds_raw / torch.norm(embeds_raw, dim=1, keepdim=True)
 
     def inference(self, utterances, hidden_init=None):
         """

@@ -151,8 +151,7 @@ class DecoderBlockRes1B(nn.Module):
     def prune(self, x, both=False):
         """Prune the shape of x after transpose convolution.
         """
-        if(both): x = x[:, :, 0 : - 1, 0:-1]
-        else: x = x[:, :, 0: - 1, :]
+        x = x[:, :, 0 : - 1, 0:-1] if both else x[:, :, 0: - 1, :]
         return x
 
     def forward(self, input_tensor, concat_tensor,both=False):
@@ -201,8 +200,7 @@ class DecoderBlockRes2BCond(nn.Module):
     def prune(self, x, both=False):
         """Prune the shape of x after transpose convolution.
         """
-        if(both): x = x[:, :, 0 : - 1, 0:-1]
-        else: x = x[:, :, 0: - 1, :]
+        x = x[:, :, 0 : - 1, 0:-1] if both else x[:, :, 0: - 1, :]
         return x
 
     def forward(self, input_tensor, concat_tensor, cond_vec, both=False):
@@ -254,8 +252,7 @@ class DecoderBlockRes4BCond(nn.Module):
     def prune(self, x, both=False):
         """Prune the shape of x after transpose convolution.
         """
-        if(both): x = x[:, :, 0 : - 1, 0:-1]
-        else: x = x[:, :, 0: - 1, :]
+        x = x[:, :, 0 : - 1, 0:-1] if both else x[:, :, 0: - 1, :]
         return x
 
     def forward(self, input_tensor, concat_tensor, cond_vec, both=False):
@@ -309,8 +306,7 @@ class DecoderBlockRes4B(nn.Module):
     def prune(self, x, both=False):
         """Prune the shape of x after transpose convolution.
         """
-        if(both): x = x[:, :, 0 : - 1, 0:-1]
-        else: x = x[:, :, 0: - 1, :]
+        x = x[:, :, 0 : - 1, 0:-1] if both else x[:, :, 0: - 1, :]
         return x
 
     def forward(self, input_tensor, concat_tensor,both=False):
@@ -371,12 +367,11 @@ class ConvBlockResCond(nn.Module):
         x = self.film1(x, cond_vec)
         x = self.conv2(F.leaky_relu_(self.bn2(x), negative_slope=0.01))
         x = self.film2(x, cond_vec)
-        if self.is_shortcut:
-            residual = self.shortcut(origin)
-            residual = self.film_res(residual, cond_vec)
-            return residual + x
-        else:
+        if not self.is_shortcut:
             return origin + x
+        residual = self.shortcut(origin)
+        residual = self.film_res(residual, cond_vec)
+        return residual + x
 
 class ConvBlockRes(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, activation, momentum):
@@ -423,10 +418,7 @@ class ConvBlockRes(nn.Module):
         x = self.conv1(F.leaky_relu_(self.bn1(x), negative_slope=0.01))
         x = self.conv2(F.leaky_relu_(self.bn2(x), negative_slope=0.01))
 
-        if self.is_shortcut:
-            return self.shortcut(origin) + x
-        else:
-            return origin + x
+        return self.shortcut(origin) + x if self.is_shortcut else origin + x
 
 def init_layer(layer):
     """Initialize a Linear or Convolutional layer. """

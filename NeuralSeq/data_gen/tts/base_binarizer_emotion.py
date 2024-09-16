@@ -73,20 +73,14 @@ class EmotionBinarizer:
         return self.valid_item_names
 
     def build_spk_map(self):
-        spk_map = set()
-        for item_name in self.item_names:
-            spk_name = self.item2spk[item_name]
-            spk_map.add(spk_name)
+        spk_map = {self.item2spk[item_name] for item_name in self.item_names}
         spk_map = {x: i for i, x in enumerate(sorted(list(spk_map)))}
         print("| #Spk: ", len(spk_map))
-        assert len(spk_map) == 0 or len(spk_map) <= hparams['num_spk'], len(spk_map)
+        assert not spk_map or len(spk_map) <= hparams['num_spk'], len(spk_map)
         return spk_map
 
     def build_emo_map(self):
-        emo_map = set()
-        for item_name in self.item_names:
-            emo_name = self.item2emo[item_name]
-            emo_map.add(emo_name)
+        emo_map = {self.item2emo[item_name] for item_name in self.item_names}
         emo_map = {x: i for i, x in enumerate(sorted(list(emo_map)))}
         print("| #Emo: ", len(emo_map))
         return emo_map
@@ -120,7 +114,7 @@ class EmotionBinarizer:
             word_set = Counter(word_set)
             total_words = sum(word_set.values())
             word_set = word_set.most_common(hparams['word_size'])
-            num_unk_words = total_words - sum([x[1] for x in word_set])
+            num_unk_words = total_words - sum(x[1] for x in word_set)
             word_set = [x[0] for x in word_set]
             json.dump(word_set, open(fn, 'w'))
             print(f"| Build word set. Size: {len(word_set)}, #total words: {total_words},"
@@ -171,7 +165,6 @@ class EmotionBinarizer:
 
     def process_data(self, prefix):
         data_dir = hparams['binary_data_dir']
-        args = []
         builder = IndexedDatasetBuilder(f'{data_dir}/{prefix}')
         ph_lengths = []
         mel_lengths = []
@@ -181,15 +174,18 @@ class EmotionBinarizer:
             voice_encoder = VoiceEncoder().cuda()
 
         meta_data = list(self.meta_data(prefix))
-        for m in meta_data:
-            args.append(list(m) + [(self.phone_encoder, self.word_encoder), self.binarization_args])
+        args = [
+            list(m)
+            + [(self.phone_encoder, self.word_encoder), self.binarization_args]
+            for m in meta_data
+        ]
         num_workers = self.num_workers
         for f_id, (_, item) in enumerate(
                 zip(tqdm(meta_data), chunked_multiprocess_run(self.process_item, args, num_workers=num_workers))):
             if item is None:
                 continue
             item['spk_embed'] = voice_encoder.embed_utterance(item['wav']) \
-                if self.binarization_args['with_spk_embed'] else None
+                    if self.binarization_args['with_spk_embed'] else None
             processed_wav = preprocess_wav(item['wav_fn'])
             item['emo_embed'] = Embed_utterance(processed_wav)
             if not self.binarization_args['with_wav'] and 'wav' in item:
@@ -203,9 +199,9 @@ class EmotionBinarizer:
                 f0s.append(item['f0'])
         builder.finalize()
         np.save(f'{data_dir}/{prefix}_lengths.npy', mel_lengths)
-        if len(ph_lengths) > 0:
+        if ph_lengths:
             np.save(f'{data_dir}/{prefix}_ph_lengths.npy', ph_lengths)
-        if len(f0s) > 0:
+        if f0s:
             f0s = np.concatenate(f0s, 0)
             f0s = f0s[f0s != 0]
             np.save(f'{data_dir}/{prefix}_f0s_mean_std.npy', [np.mean(f0s).item(), np.std(f0s).item()])
@@ -234,7 +230,7 @@ class EmotionBinarizer:
                     res['ph_len'] = len(res['phone'])
                 except:
                     traceback.print_exc()
-                    raise BinarizationError(f"Empty phoneme")
+                    raise BinarizationError("Empty phoneme")
                 if binarization_args['with_align']:
                     cls.get_align(tg_fn, res)
                     if binarization_args['trim_eos_bos']:
@@ -266,7 +262,7 @@ class EmotionBinarizer:
         if tg_fn is not None and os.path.exists(tg_fn):
             mel2ph, dur = get_mel2ph(tg_fn, ph, mel, hparams)
         else:
-            raise BinarizationError(f"Align not found")
+            raise BinarizationError("Align not found")
         if mel2ph.max() - 1 >= len(phone_encoded):
             raise BinarizationError(
                 f"Align does not match: mel2ph.max() - 1: {mel2ph.max() - 1}, len(phone_encoded): {len(phone_encoded)}")
@@ -321,7 +317,7 @@ class EmotionBinarizer:
         # mel side mapping to word
         mel2word = []
         dur_word = [0 for _ in range(len(ph_words))]
-        for i, m2p in enumerate(res['mel2ph']):
+        for m2p in res['mel2ph']:
             word_idx = ph2word[m2p - 1]
             mel2word.append(ph2word[m2p - 1])
             dur_word[word_idx] += 1
@@ -332,7 +328,7 @@ class EmotionBinarizer:
         res['mel2word'] = mel2word  # [T_mel]
         res['dur_word'] = dur_word  # [T_word]
         words = [x for x in res['txt'].split(" ") if x != '']
-        while len(words) > 0 and is_sil_phoneme(words[0]):
+        while words and is_sil_phoneme(words[0]):
             words = words[1:]
         while len(words) > 0 and is_sil_phoneme(words[-1]):
             words = words[:-1]

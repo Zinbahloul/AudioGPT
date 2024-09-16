@@ -34,13 +34,12 @@ class GenerSpeech_dataset(BaseTTSDataset):
         if prefix == 'valid':
             indexed_ds = IndexedDataset(f'{self.data_dir}/train')
             sizes = np.load(f'{self.data_dir}/train_lengths.npy')
-            index = [i for i in range(len(indexed_ds))]
+            index = list(range(len(indexed_ds)))
             random.shuffle(index)
             index = index[:300]
             self.sizes = sizes[index]
             self.indexed_ds = []
-            for i in index:
-                self.indexed_ds.append(indexed_ds[i])
+            self.indexed_ds.extend(indexed_ds[i] for i in index)
             self.avail_idxs = list(range(len(self.sizes)))
             if hparams['min_frames'] > 0:
                 self.avail_idxs = [x for x in self.avail_idxs if self.sizes[x] >= hparams['min_frames']]

@@ -64,7 +64,6 @@ class DiffSingerTask(DiffSpeechTask):
                 v.requires_grad = False
 
     def validation_step(self, sample, batch_idx):
-        outputs = {}
         txt_tokens = sample['txt_tokens']  # [B, T_t]
 
         target = sample['mels']  # [B, T_s, 80]
@@ -75,8 +74,7 @@ class DiffSingerTask(DiffSpeechTask):
         f0 = sample['f0']
         uv = sample['uv']
 
-        outputs['losses'] = {}
-
+        outputs = {'losses': {}}
         outputs['losses'], model_out = self.run_model(self.model, sample, return_output=True, infer=False)
 
 
@@ -147,7 +145,7 @@ class DiffSingerOfflineTask(DiffSingerTask):
         fs2_mel = None #sample['fs2_mels']
         spk_embed = sample.get('spk_embed') if not hparams['use_spk_id'] else sample.get('spk_ids')
         if hparams['pitch_type'] == 'cwt':
-            cwt_spec = sample[f'cwt_spec']
+            cwt_spec = sample['cwt_spec']
             f0_mean = sample['f0_mean']
             f0_std = sample['f0_std']
             sample['f0_cwt'] = f0 = model.cwt2f0_norm(cwt_spec, f0_mean, f0_std, mel2ph)
@@ -164,13 +162,9 @@ class DiffSingerOfflineTask(DiffSingerTask):
         if hparams['use_energy_embed']:
             self.add_energy_loss(output['energy_pred'], energy, losses)
 
-        if not return_output:
-            return losses
-        else:
-            return losses, output
+        return losses if not return_output else (losses, output)
 
     def validation_step(self, sample, batch_idx):
-        outputs = {}
         txt_tokens = sample['txt_tokens']  # [B, T_t]
 
         target = sample['mels']  # [B, T_s, 80]
@@ -181,8 +175,7 @@ class DiffSingerOfflineTask(DiffSingerTask):
         f0 = sample['f0']
         uv = sample['uv']
 
-        outputs['losses'] = {}
-
+        outputs = {'losses': {}}
         outputs['losses'], model_out = self.run_model(self.model, sample, return_output=True, infer=False)
 
 
@@ -207,11 +200,7 @@ class DiffSingerOfflineTask(DiffSingerTask):
 
     def test_step(self, sample, batch_idx):
         spk_embed = sample.get('spk_embed') if not hparams['use_spk_id'] else sample.get('spk_ids')
-        txt_tokens = sample['txt_tokens']
-        energy = sample['energy']
-        if hparams['profile_infer']:
-            pass
-        else:
+        if not hparams['profile_infer']:
             mel2ph, uv, f0 = None, None, None
             if hparams['use_gt_dur']:
                 mel2ph = sample['mel2ph']
@@ -219,6 +208,8 @@ class DiffSingerOfflineTask(DiffSingerTask):
                 f0 = sample['f0']
                 uv = sample['uv']
             fs2_mel = sample['fs2_mels']
+            txt_tokens = sample['txt_tokens']
+            energy = sample['energy']
             outputs = self.model(
                 txt_tokens, spk_embed=spk_embed, mel2ph=mel2ph, f0=f0, uv=uv, ref_mels=[None, fs2_mel], energy=energy,
                 infer=True)
@@ -291,7 +282,7 @@ class DiffSingerMIDITask(DiffSingerTask):
 
         spk_embed = sample.get('spk_embed') if not hparams['use_spk_id'] else sample.get('spk_ids')
         if hparams['pitch_type'] == 'cwt':
-            cwt_spec = sample[f'cwt_spec']
+            cwt_spec = sample['cwt_spec']
             f0_mean = sample['f0_mean']
             f0_std = sample['f0_std']
             sample['f0_cwt'] = f0 = model.cwt2f0_norm(cwt_spec, f0_mean, f0_std, mel2ph)
@@ -308,13 +299,9 @@ class DiffSingerMIDITask(DiffSingerTask):
             self.add_pitch_loss(output, sample, losses)
         if hparams['use_energy_embed']:
             self.add_energy_loss(output['energy_pred'], energy, losses)
-        if not return_output:
-            return losses
-        else:
-            return losses, output
+        return losses if not return_output else (losses, output)
 
     def validation_step(self, sample, batch_idx):
-        outputs = {}
         txt_tokens = sample['txt_tokens']  # [B, T_t]
 
         target = sample['mels']  # [B, T_s, 80]
@@ -323,8 +310,7 @@ class DiffSingerMIDITask(DiffSingerTask):
         spk_embed = sample.get('spk_embed') if not hparams['use_spk_id'] else sample.get('spk_ids')
         mel2ph = sample['mel2ph']
 
-        outputs['losses'] = {}
-
+        outputs = {'losses': {}}
         outputs['losses'], model_out = self.run_model(self.model, sample, return_output=True, infer=False)
 
         outputs['total_loss'] = sum(outputs['losses'].values())
@@ -364,14 +350,12 @@ class DiffSingerMIDITask(DiffSingerTask):
             is_sil = is_sil | (txt_tokens == self.phone_encoder.encode(p)[0])
         is_sil = is_sil.float()  # [B, T_txt]
 
-        # phone duration loss
-        if hparams['dur_loss'] == 'mse':
-            losses['pdur'] = F.mse_loss(dur_pred, (dur_gt + 1).log(), reduction='none')
-            losses['pdur'] = (losses['pdur'] * nonpadding).sum() / nonpadding.sum()
-            dur_pred = (dur_pred.exp() - 1).clamp(min=0)
-        else:
+        if hparams['dur_loss'] != 'mse':
             raise NotImplementedError
 
+        losses['pdur'] = F.mse_loss(dur_pred, (dur_gt + 1).log(), reduction='none')
+        losses['pdur'] = (losses['pdur'] * nonpadding).sum() / nonpadding.sum()
+        dur_pred = (dur_pred.exp() - 1).clamp(min=0)
         # use linear scale for sent and word duration
         if hparams['lambda_word_dur'] > 0:
             idx = F.pad(wdb.cumsum(axis=1), (1, 0))[:, :-1]
@@ -411,7 +395,7 @@ class AuxDecoderMIDITask(FastSpeech2Task):
 
         spk_embed = sample.get('spk_embed') if not hparams['use_spk_id'] else sample.get('spk_ids')
         if hparams['pitch_type'] == 'cwt':
-            cwt_spec = sample[f'cwt_spec']
+            cwt_spec = sample['cwt_spec']
             f0_mean = sample['f0_mean']
             f0_std = sample['f0_std']
             sample['f0_cwt'] = f0 = model.cwt2f0_norm(cwt_spec, f0_mean, f0_std, mel2ph)
@@ -427,10 +411,7 @@ class AuxDecoderMIDITask(FastSpeech2Task):
             self.add_pitch_loss(output, sample, losses)
         if hparams['use_energy_embed']:
             self.add_energy_loss(output['energy_pred'], energy, losses)
-        if not return_output:
-            return losses
-        else:
-            return losses, output
+        return losses if not return_output else (losses, output)
 
     def add_dur_loss(self, dur_pred, mel2ph, txt_tokens, wdb, losses=None):
         """
@@ -448,14 +429,12 @@ class AuxDecoderMIDITask(FastSpeech2Task):
             is_sil = is_sil | (txt_tokens == self.phone_encoder.encode(p)[0])
         is_sil = is_sil.float()  # [B, T_txt]
 
-        # phone duration loss
-        if hparams['dur_loss'] == 'mse':
-            losses['pdur'] = F.mse_loss(dur_pred, (dur_gt + 1).log(), reduction='none')
-            losses['pdur'] = (losses['pdur'] * nonpadding).sum() / nonpadding.sum()
-            dur_pred = (dur_pred.exp() - 1).clamp(min=0)
-        else:
+        if hparams['dur_loss'] != 'mse':
             raise NotImplementedError
 
+        losses['pdur'] = F.mse_loss(dur_pred, (dur_gt + 1).log(), reduction='none')
+        losses['pdur'] = (losses['pdur'] * nonpadding).sum() / nonpadding.sum()
+        dur_pred = (dur_pred.exp() - 1).clamp(min=0)
         # use linear scale for sent and word duration
         if hparams['lambda_word_dur'] > 0:
             idx = F.pad(wdb.cumsum(axis=1), (1, 0))[:, :-1]
@@ -473,8 +452,7 @@ class AuxDecoderMIDITask(FastSpeech2Task):
             losses['sdur'] = sdur_loss.mean() * hparams['lambda_sent_dur']
 
     def validation_step(self, sample, batch_idx):
-        outputs = {}
-        outputs['losses'] = {}
+        outputs = {'losses': {}}
         outputs['losses'], model_out = self.run_model(self.model, sample, return_output=True)
         outputs['total_loss'] = sum(outputs['losses'].values())
         outputs['nsamples'] = sample['nsamples']

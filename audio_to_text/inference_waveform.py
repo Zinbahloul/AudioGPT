@@ -54,8 +54,7 @@ def decode_caption(word_ids, vocabulary):
         elif word == "<start>":
             continue
         candidate.append(word)
-    candidate = " ".join(candidate)
-    return candidate
+    return " ".join(candidate)
 
 
 class AudioCapModel(object):

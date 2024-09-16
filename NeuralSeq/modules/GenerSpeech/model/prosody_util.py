@@ -109,8 +109,16 @@ class CrossAttenLayer(nn.Module):
         if forcing:
             maxlength = src.shape[0]
             k = local_emotion.shape[0] / src.shape[0]
-            lengths1 = torch.ceil(torch.tensor([i for i in range(maxlength)]).to(src.device) * k) + 1
-            lengths2 = torch.floor(torch.tensor([i for i in range(maxlength)]).to(src.device) * k) - 1
+            lengths1 = (
+                torch.ceil(torch.tensor(list(range(maxlength))).to(src.device) * k)
+                + 1
+            )
+            lengths2 = (
+                torch.floor(
+                    torch.tensor(list(range(maxlength))).to(src.device) * k
+                )
+                - 1
+            )
             mask1 = sequence_mask(lengths1, local_emotion.shape[0])
             mask2 = sequence_mask(lengths2, local_emotion.shape[0])
             mask = mask1.float() - mask2.float()
@@ -249,13 +257,18 @@ class ResidualBlock(nn.Module):
         self.blocks = [
             nn.Sequential(
                 norm_builder(),
-                nn.Conv1d(channels, c_multiple * channels, kernel_size, dilation=dilation,
-                          padding=(dilation * (kernel_size - 1)) // 2),
-                LambdaLayer(lambda x: x * kernel_size ** -0.5),
+                nn.Conv1d(
+                    channels,
+                    c_multiple * channels,
+                    kernel_size,
+                    dilation=dilation,
+                    padding=(dilation * (kernel_size - 1)) // 2,
+                ),
+                LambdaLayer(lambda x: x * kernel_size**-0.5),
                 nn.GELU(),
                 nn.Conv1d(c_multiple * channels, channels, 1, dilation=dilation),
             )
-            for i in range(n)
+            for _ in range(n)
         ]
 
         self.blocks = nn.ModuleList(self.blocks)

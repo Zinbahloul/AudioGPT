@@ -49,7 +49,7 @@ class GenerSpeechInfer(BaseTTSInfer):
         # prepare files for alignment
         os.system('rm -r example/; mkdir example/')
         audio.save_wav(ref_audio_raw, processed_ref_audio, self.hparams['audio_sample_rate'])
-        with open(f'example/temp.lab', 'w') as f_txt:
+        with open('example/temp.lab', 'w') as f_txt:
             f_txt.write(phs_for_align)
         os.system(f'mfa align example/ {self.hparams["binary_data_dir"]}/mfa_dict.txt {self.hparams["binary_data_dir"]}/mfa_model.zip example/textgrid/  --clean')
         item2tgfn = 'example/textgrid/temp.TextGrid'  # prepare textgrid alignment
@@ -84,7 +84,7 @@ class GenerSpeechInfer(BaseTTSInfer):
         mel2word = torch.LongTensor(item['mel2word'])[None, :].to(self.device)
         word_tokens = torch.LongTensor(item['word_tokens'])[None, :].to(self.device)
 
-        batch = {
+        return {
             'item_name': item_names,
             'text': text,
             'ph': ph,
@@ -99,7 +99,6 @@ class GenerSpeechInfer(BaseTTSInfer):
             'mel2word': mel2word,
             'word_tokens': word_tokens,
         }
-        return batch
 
     def forward_model(self, inp):
         sample = self.input_to_batch(inp)

@@ -77,8 +77,8 @@ def train(args):
     device = 'cuda' if (args.cuda and torch.cuda.is_available()) else 'cpu'
 
     classes_num = config.classes_num
-    pretrain = True if pretrained_checkpoint_path else False
-    
+    pretrain = bool(pretrained_checkpoint_path)
+
     # Model
     Model = eval(model_type)
     model = Model(sample_rate, window_size, hop_size, mel_bins, fmin, fmax, 
@@ -86,11 +86,11 @@ def train(args):
 
     # Load pretrained model
     if pretrain:
-        logging.info('Load pretrained model from {}'.format(pretrained_checkpoint_path))
+        logging.info(f'Load pretrained model from {pretrained_checkpoint_path}')
         model.load_from_pretrain(pretrained_checkpoint_path)
 
     # Parallel
-    print('GPU number: {}'.format(torch.cuda.device_count()))
+    print(f'GPU number: {torch.cuda.device_count()}')
     model = torch.nn.DataParallel(model)
 
     if 'cuda' in device:

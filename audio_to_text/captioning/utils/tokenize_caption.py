@@ -35,7 +35,7 @@ def tokenize_caption(input_json: str,
         vocab (Vocab): Object with the processed vocabulary
 """
     data = json.load(open(input_json, "r"))["audios"]
-    
+
     if zh:
         from nltk.parse.corenlp import CoreNLPParser
         from zhon.hanzi import punctuation
@@ -45,11 +45,8 @@ def tokenize_caption(input_json: str,
                 caption = data[audio_idx]["captions"][cap_idx]["caption"]
                 # Remove all punctuations
                 if not keep_punctuation:
-                    caption = re.sub("[{}]".format(punctuation), "", caption)
-                if character_level:
-                    tokens = list(caption)
-                else:
-                    tokens = list(parser.tokenize(caption))
+                    caption = re.sub(f"[{punctuation}]", "", caption)
+                tokens = list(caption) if character_level else list(parser.tokenize(caption))
                 data[audio_idx]["captions"][cap_idx]["tokens"] = " ".join(tokens)
     else:
         from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer

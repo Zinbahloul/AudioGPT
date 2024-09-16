@@ -14,8 +14,7 @@ def read_black_list(black_list_csv):
         reader = csv.reader(fr)
         lines = list(reader)
 
-    black_list_names = ['Y{}.wav'.format(line[0]) for line in lines]
-    return black_list_names
+    return [f'Y{line[0]}.wav' for line in lines]
 
 
 class AudioSetDataset(object):
@@ -47,10 +46,7 @@ class AudioSetDataset(object):
             waveform = self.resample(waveform)
             target = hf['target'][index_in_hdf5].astype(np.float32)
 
-        data_dict = {
-            'audio_name': audio_name, 'waveform': waveform, 'target': target}
-            
-        return data_dict
+        return {'audio_name': audio_name, 'waveform': waveform, 'target': target}
 
     def resample(self, waveform):
         """Resample.
@@ -64,9 +60,9 @@ class AudioSetDataset(object):
         if self.sample_rate == 32000:
             return waveform
         elif self.sample_rate == 16000:
-            return waveform[0 :: 2]
+            return waveform[::2]
         elif self.sample_rate == 8000:
-            return waveform[0 :: 4]
+            return waveform[::4]
         else:
             raise Exception('Incorrect sample rate!')
 
@@ -90,7 +86,7 @@ class Base(object):
         else:
             self.black_list_names = []
 
-        logging.info('Black list samples: {}'.format(len(self.black_list_names)))
+        logging.info(f'Black list samples: {len(self.black_list_names)}')
 
         # Load target
         load_time = time.time()
@@ -100,9 +96,9 @@ class Base(object):
             self.hdf5_paths = [hdf5_path.decode() for hdf5_path in hf['hdf5_path'][:]]
             self.indexes_in_hdf5 = hf['index_in_hdf5'][:]
             self.targets = hf['target'][:].astype(np.float32)
-        
+
         (self.audios_num, self.classes_num) = self.targets.shape
-        logging.info('Training number: {}'.format(self.audios_num))
+        logging.info(f'Training number: {self.audios_num}')
         logging.info('Load target time: {:.3f} s'.format(time.time() - load_time))
 
 
@@ -148,23 +144,18 @@ class TrainSampler(Base):
                 if self.pointer >= self.audios_num:
                     self.pointer = 0
                     self.random_state.shuffle(self.indexes)
-                
-                # If audio in black list then continue
+
                 if self.audio_names[index] in self.black_list_names:
                     continue
-                else:
-                    batch_meta.append({
-                        'hdf5_path': self.hdf5_paths[index], 
-                        'index_in_hdf5': self.indexes_in_hdf5[index]})
-                    i += 1
+                batch_meta.append({
+                    'hdf5_path': self.hdf5_paths[index], 
+                    'index_in_hdf5': self.indexes_in_hdf5[index]})
+                i += 1
 
             yield batch_meta
 
     def state_dict(self):
-        state = {
-            'indexes': self.indexes,
-            'pointer': self.pointer}
-        return state
+        return {'indexes': self.indexes, 'pointer': self.pointer}
             
     def load_state_dict(self, state):
         self.indexes = state['indexes']
@@ -185,23 +176,23 @@ class BalancedTrainSampler(Base):
         """
         super(BalancedTrainSampler, self).__init__(indexes_hdf5_path, 
             batch_size, black_list_csv, random_seed)
-        
+
         self.samples_num_per_class = np.sum(self.targets, axis=0)
-        logging.info('samples_num_per_class: {}'.format(
-            self.samples_num_per_class.astype(np.int32)))
-        
+        logging.info(
+            f'samples_num_per_class: {self.samples_num_per_class.astype(np.int32)}'
+        )
+
         # Training indexes of all sound classes. E.g.: 
         # [[0, 11, 12, ...], [3, 4, 15, 16, ...], [7, 8, ...], ...]
         self.indexes_per_class = []
-        
-        for k in range(self.classes_num):
-            self.indexes_per_class.append(
-                np.where(self.targets[:, k] == 1)[0])
-            
+
+        self.indexes_per_class.extend(
+            np.where(self.targets[:, k] == 1)[0] for k in range(self.classes_num)
+        )
         # Shuffle indexes
         for k in range(self.classes_num):
             self.random_state.shuffle(self.indexes_per_class[k])
-        
+
         self.queue = []
         self.pointers_of_classes = [0] * self.classes_num
 
@@ -232,29 +223,27 @@ class BalancedTrainSampler(Base):
                 pointer = self.pointers_of_classes[class_id]
                 self.pointers_of_classes[class_id] += 1
                 index = self.indexes_per_class[class_id][pointer]
-                
+
                 # When finish one epoch of a sound class, then shuffle its indexes and reset pointer
                 if self.pointers_of_classes[class_id] >= self.samples_num_per_class[class_id]:
                     self.pointers_of_classes[class_id] = 0
                     self.random_state.shuffle(self.indexes_per_class[class_id])
 
-                # If audio in black list then continue
                 if self.audio_names[index] in self.black_list_names:
                     continue
-                else:
-                    batch_meta.append({
-                        'hdf5_path': self.hdf5_paths[index], 
-                        'index_in_hdf5': self.indexes_in_hdf5[index]})
-                    i += 1
+                batch_meta.append({
+                    'hdf5_path': self.hdf5_paths[index], 
+                    'index_in_hdf5': self.indexes_in_hdf5[index]})
+                i += 1
 
             yield batch_meta
 
     def state_dict(self):
-        state = {
-            'indexes_per_class': self.indexes_per_class, 
-            'queue': self.queue, 
-            'pointers_of_classes': self.pointers_of_classes}
-        return state
+        return {
+            'indexes_per_class': self.indexes_per_class,
+            'queue': self.queue,
+            'pointers_of_classes': self.pointers_of_classes,
+        }
             
     def load_state_dict(self, state):
         self.indexes_per_class = state['indexes_per_class']
@@ -307,15 +296,13 @@ class AlternateTrainSampler(Base):
                     if self.sampler1.pointer >= self.sampler1.audios_num:
                         self.sampler1.pointer = 0
                         self.sampler1.random_state.shuffle(self.sampler1.indexes)
-                    
-                    # If audio in black list then continue
+
                     if self.sampler1.audio_names[index] in self.sampler1.black_list_names:
                         continue
-                    else:
-                        batch_meta.append({
-                            'hdf5_path': self.sampler1.hdf5_paths[index], 
-                            'index_in_hdf5': self.sampler1.indexes_in_hdf5[index]})
-                        i += 1
+                    batch_meta.append({
+                        'hdf5_path': self.sampler1.hdf5_paths[index], 
+                        'index_in_hdf5': self.sampler1.indexes_in_hdf5[index]})
+                    i += 1
 
             elif self.count % 2 == 1:
                 batch_meta = []
@@ -328,28 +315,26 @@ class AlternateTrainSampler(Base):
                     pointer = self.sampler2.pointers_of_classes[class_id]
                     self.sampler2.pointers_of_classes[class_id] += 1
                     index = self.sampler2.indexes_per_class[class_id][pointer]
-                    
+
                     # When finish one epoch of a sound class, then shuffle its indexes and reset pointer
                     if self.sampler2.pointers_of_classes[class_id] >= self.sampler2.samples_num_per_class[class_id]:
                         self.sampler2.pointers_of_classes[class_id] = 0
                         self.sampler2.random_state.shuffle(self.sampler2.indexes_per_class[class_id])
 
-                    # If audio in black list then continue
                     if self.sampler2.audio_names[index] in self.sampler2.black_list_names:
                         continue
-                    else:
-                        batch_meta.append({
-                            'hdf5_path': self.sampler2.hdf5_paths[index], 
-                            'index_in_hdf5': self.sampler2.indexes_in_hdf5[index]})
-                        i += 1
+                    batch_meta.append({
+                        'hdf5_path': self.sampler2.hdf5_paths[index], 
+                        'index_in_hdf5': self.sampler2.indexes_in_hdf5[index]})
+                    i += 1
 
             yield batch_meta
 
     def state_dict(self):
-        state = {
-            'sampler1': self.sampler1.state_dict(), 
-            'sampler2': self.sampler2.state_dict()}
-        return state
+        return {
+            'sampler1': self.sampler1.state_dict(),
+            'sampler2': self.sampler2.state_dict(),
+        }
 
     def load_state_dict(self, state):
         self.sampler1.load_state_dict(state['sampler1'])
@@ -390,15 +375,15 @@ class EvaluateSampler(object):
             batch_indexes = np.arange(pointer, 
                 min(pointer + batch_size, self.audios_num))
 
-            batch_meta = []
-
-            for index in batch_indexes:
-                batch_meta.append({
-                    'audio_name': self.audio_names[index], 
-                    'hdf5_path': self.hdf5_paths[index], 
-                    'index_in_hdf5': self.indexes_in_hdf5[index], 
-                    'target': self.targets[index]})
-
+            batch_meta = [
+                {
+                    'audio_name': self.audio_names[index],
+                    'hdf5_path': self.hdf5_paths[index],
+                    'index_in_hdf5': self.indexes_in_hdf5[index],
+                    'target': self.targets[index],
+                }
+                for index in batch_indexes
+            ]
             pointer += batch_size
             yield batch_meta
 
@@ -413,9 +398,7 @@ def collate_fn(list_data_dict):
       np_data_dict, dict, e.g.,
           {'audio_name': (batch_size,), 'waveform': (batch_size, clip_samples), ...}
     """
-    np_data_dict = {}
-    
-    for key in list_data_dict[0].keys():
-        np_data_dict[key] = np.array([data_dict[key] for data_dict in list_data_dict])
-    
-    return np_data_dict
+    return {
+        key: np.array([data_dict[key] for data_dict in list_data_dict])
+        for key in list_data_dict[0].keys()
+    }

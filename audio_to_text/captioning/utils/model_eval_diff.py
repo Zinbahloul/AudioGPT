@@ -11,10 +11,7 @@ sys.path.append(os.getcwd())
 
 
 def coco_score(refs, pred, scorer):
-    if scorer.method() == "Bleu":
-        scores = np.array([ 0.0 for n in range(4) ])
-    else:
-        scores = 0
+    scores = np.array([0.0 for _ in range(4)]) if scorer.method() == "Bleu" else 0
     num_cap_per_audio = len(refs[list(refs.keys())[0]])
 
     for i in range(num_cap_per_audio):
@@ -23,19 +20,14 @@ def coco_score(refs, pred, scorer):
                 refs[key].insert(0, res[key][0])
         res = {key: [refs[key].pop(),] for key in refs}
         score, _ = scorer.compute_score(refs, pred)    
-        
-        if scorer.method() == "Bleu":
-            scores += np.array(score)
-        else:
-            scores += score
-    
+
+        scores += np.array(score) if scorer.method() == "Bleu" else score
     score = scores / num_cap_per_audio
 
     for key in refs:
         refs[key].insert(0, res[key][0])
     score_allref, _ = scorer.compute_score(refs, pred)
-    diff = score_allref - score
-    return diff
+    return score_allref - score
 
 def embedding_score(refs, pred, scorer):
 
@@ -46,14 +38,13 @@ def embedding_score(refs, pred, scorer):
         res = {key: [refs[key][i],] for key in refs.keys() if len(refs[key]) == num_cap_per_audio}
         refs_i = {key: np.concatenate([refs[key][:i], refs[key][i+1:]]) for key in refs.keys() if len(refs[key]) == num_cap_per_audio}
         score, _ = scorer.compute_score(refs_i, pred)    
-        
+
         scores += score
-    
+
     score = scores / num_cap_per_audio
 
     score_allref, _ = scorer.compute_score(refs, pred)
-    diff = score_allref - score
-    return diff
+    return score_allref - score
    
 def main(output_file, eval_caption_file, eval_embedding_file, output, zh=False):
     output_df = pd.read_json(output_file)

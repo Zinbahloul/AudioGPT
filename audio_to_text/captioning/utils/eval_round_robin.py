@@ -6,10 +6,7 @@ import fire
 
 
 def evaluate_annotation(key2refs, scorer):
-    if scorer.method() == "Bleu":
-        scores = np.array([ 0.0 for n in range(4) ])
-    else:
-        scores = 0
+    scores = np.array([0.0 for _ in range(4)]) if scorer.method() == "Bleu" else 0
     num_cap_per_audio = len(next(iter(key2refs.values())))
 
     for i in range(num_cap_per_audio):
@@ -18,33 +15,20 @@ def evaluate_annotation(key2refs, scorer):
                 key2refs[key].insert(0, res[key][0])
         res = { key: [refs.pop(),] for key, refs in key2refs.items() }
         score, _ = scorer.compute_score(key2refs, res)
-        
-        if scorer.method() == "Bleu":
-            scores += np.array(score)
-        else:
-            scores += score
-    
+
+        scores += np.array(score) if scorer.method() == "Bleu" else score
     score = scores / num_cap_per_audio
     return score
    
 def evaluate_prediction(key2pred, key2refs, scorer):
-    if scorer.method() == "Bleu":
-        scores = np.array([ 0.0 for n in range(4) ])
-    else:
-        scores = 0
+    scores = np.array([0.0 for _ in range(4)]) if scorer.method() == "Bleu" else 0
     num_cap_per_audio = len(next(iter(key2refs.values())))
 
     for i in range(num_cap_per_audio):
-        key2refs_i = {}
-        for key, refs in key2refs.items():
-            key2refs_i[key] = refs[:i] + refs[i+1:]
+        key2refs_i = {key: refs[:i] + refs[i+1:] for key, refs in key2refs.items()}
         score, _ = scorer.compute_score(key2refs_i, key2pred)
-        
-        if scorer.method() == "Bleu":
-            scores += np.array(score)
-        else:
-            scores += score
-    
+
+        scores += np.array(score) if scorer.method() == "Bleu" else score
     score = scores / num_cap_per_audio
     return score
 
@@ -57,15 +41,14 @@ class Evaluator(object):
         key2refs = {}
         for audio_idx in range(len(captions)):
             audio_id = captions[audio_idx]["audio_id"]
-            key2refs[audio_id] = []
-            for caption in captions[audio_idx]["captions"]:
-                key2refs[audio_id].append(caption["caption"])
-
+            key2refs[audio_id] = [
+                caption["caption"] for caption in captions[audio_idx]["captions"]
+            ]
         from fense.fense import Fense
-        scores = {}
         scorer = Fense()
-        scores[scorer.method()] = evaluate_annotation(copy.deepcopy(key2refs), scorer)
-
+        scores = {
+            scorer.method(): evaluate_annotation(copy.deepcopy(key2refs), scorer)
+        }
         refs4eval = {}
         for key, refs in key2refs.items():
             refs4eval[key] = []
@@ -87,7 +70,7 @@ class Evaluator(object):
         from pycocoevalcap.rouge.rouge import Rouge
         from pycocoevalcap.meteor.meteor import Meteor
         from pycocoevalcap.spice.spice import Spice
-        
+
 
         scorers = [Bleu(), Rouge(), Cider(), Meteor(), Spice()]
         for scorer in scorers:
@@ -111,10 +94,10 @@ class Evaluator(object):
         key2refs = {}
         for audio_idx in range(len(ref_captions)):
             audio_id = ref_captions[audio_idx]["audio_id"]
-            key2refs[audio_id] = []
-            for caption in ref_captions[audio_idx]["captions"]:
-                key2refs[audio_id].append(caption["caption"])
-
+            key2refs[audio_id] = [
+                caption["caption"]
+                for caption in ref_captions[audio_idx]["captions"]
+            ]
         pred_captions = json.load(open(prediction, "r"))["predictions"]
 
         key2pred = {}
@@ -124,10 +107,8 @@ class Evaluator(object):
             key2pred[audio_id] = [item["tokens"]]
 
         from fense.fense import Fense
-        scores = {}
         scorer = Fense()
-        scores[scorer.method()] = evaluate_prediction(key2pred, key2refs, scorer)
-
+        scores = {scorer.method(): evaluate_prediction(key2pred, key2refs, scorer)}
         refs4eval = {}
         for key, refs in key2refs.items():
             refs4eval[key] = []

@@ -75,8 +75,7 @@ def loadWAV(filename, max_frames, evalmode=True, num_eval=10):
     if evalmode and max_frames == 0:
         feats.append(audio)
     else:
-        for asf in startframe:
-            feats.append(audio[int(asf):int(asf) + max_audio])
+        feats.extend(audio[int(asf):int(asf) + max_audio] for asf in startframe)
     feat = numpy.stack(feats, axis=0)
     feat = torch.FloatTensor(feat)
     return feat;
@@ -100,12 +99,10 @@ def evaluateFromList(listfilename, print_interval=100, test_path='', multi=False
             ## Append random label if missing
             if len(data) == 2: data = [random.randint(0,1)] + data
 
-            files.append(data[1])
-            files.append(data[2])
+            files.extend((data[1], data[2]))
             lines.append(line)
 
-    setfiles = list(set(files))
-    setfiles.sort()
+    setfiles = sorted(set(files))
     ## Save all features to file
     for idx, file in enumerate(setfiles):
         # preprocessed_wav = encoder.preprocess_wav(os.path.join(test_path,file))
@@ -150,7 +147,7 @@ def evaluateFromList(listfilename, print_interval=100, test_path='', multi=False
 
         all_scores.append(score);
         all_labels.append(int(data[0]));
-        all_trials.append(data[1]+" "+data[2])
+        all_trials.append(f"{data[1]} {data[2]}")
 
         if idx % print_interval == 0:
             telapsed = time.time() - tstart

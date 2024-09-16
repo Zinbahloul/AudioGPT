@@ -34,7 +34,7 @@ def create_indexes(args):
             hw.create_dataset('hdf5_path', data=[waveforms_hdf5_path.encode()] * audios_num, dtype='S200')
             hw.create_dataset('index_in_hdf5', data=np.arange(audios_num), dtype=np.int32)
 
-    print('Write to {}'.format(indexes_hdf5_path))
+    print(f'Write to {indexes_hdf5_path}')
           
 
 def combine_full_indexes(args):
@@ -54,7 +54,7 @@ def combine_full_indexes(args):
     paths = [path for path in paths if (
         'train' in path and 'full_train' not in path and 'mini' not in path)]
 
-    print('Total {} hdf5 to combine.'.format(len(paths)))
+    print(f'Total {len(paths)} hdf5 to combine.')
 
     with h5py.File(full_indexes_hdf5_path, 'w') as full_hf:
         full_hf.create_dataset(
@@ -62,7 +62,7 @@ def combine_full_indexes(args):
             shape=(0,), 
             maxshape=(None,), 
             dtype='S20')
-        
+
         full_hf.create_dataset(
             name='target', 
             shape=(0, classes_num), 
@@ -98,8 +98,8 @@ def combine_full_indexes(args):
 
                 full_hf['index_in_hdf5'].resize((new_n,))
                 full_hf['index_in_hdf5'][n : new_n] = part_hf['index_in_hdf5'][:]
-                
-    print('Write combined full hdf5 to {}'.format(full_indexes_hdf5_path))
+
+    print(f'Write combined full hdf5 to {full_indexes_hdf5_path}')
 
 
 if __name__ == '__main__':

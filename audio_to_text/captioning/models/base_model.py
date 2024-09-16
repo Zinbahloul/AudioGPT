@@ -25,8 +25,7 @@ class CaptionModel(nn.Module):
         self.vocab_size = decoder.vocab_size
         self.train_forward_keys = ["cap", "cap_len", "ss_ratio"]
         self.inference_forward_keys = ["sample_method", "max_length", "temp"]
-        freeze_encoder = kwargs.get("freeze_encoder", False)
-        if freeze_encoder:
+        if freeze_encoder := kwargs.get("freeze_encoder", False):
             for param in self.encoder.parameters():
                 param.requires_grad = False
         self.check_decoder_compatibility()
@@ -83,11 +82,7 @@ class CaptionModel(nn.Module):
             forward_dict = {"mode": "inference"}
             default_args = { "sample_method": "greedy", "max_length": self.max_length, "temp": 1.0 }
             for key in self.inference_forward_keys:
-                if key in input_dict:
-                    forward_dict[key] = input_dict[key]
-                else:
-                    forward_dict[key] = default_args[key]
-
+                forward_dict[key] = input_dict[key] if key in input_dict else default_args[key]
             if forward_dict["sample_method"] == "beam":
                 forward_dict["beam_size"] = input_dict.get("beam_size", 3)
                 forward_dict["n_best"] = input_dict.get("n_best", False)
@@ -106,7 +101,6 @@ class CaptionModel(nn.Module):
         return output
 
     def prepare_output(self, input_dict):
-        output = {}
         batch_size = input_dict["fc_emb"].size(0)
         if input_dict["mode"] == "train":
             max_length = input_dict["cap"].size(1) - 1
@@ -115,8 +109,11 @@ class CaptionModel(nn.Module):
         else:
             raise Exception("mode should be either 'train' or 'inference'")
         device = input_dict["fc_emb"].device
-        output["seq"] = torch.full((batch_size, max_length), self.end_idx,
-                                   dtype=torch.long)
+        output = {
+            "seq": torch.full(
+                (batch_size, max_length), self.end_idx, dtype=torch.long
+            )
+        }
         output["logit"] = torch.empty(batch_size, max_length,
                                       self.vocab_size).to(device)
         output["sampled_logprob"] = torch.zeros(batch_size, max_length)
@@ -320,14 +317,13 @@ class CaptionModel(nn.Module):
     def prepare_beamsearch_output(self, input_dict):
         beam_size = input_dict["beam_size"]
         device = input_dict["fc_emb"].device
-        output = {
+        return {
             "topk_logprob": torch.zeros(beam_size).to(device),
             "seq": None,
             "prev_words_beam": None,
             "next_word": None,
             "done_beams": [],
         }
-        return output
 
     def beamsearch_step(self, input_dict, output_i):
         decoder_input = self.prepare_beamsearch_decoder_input(input_dict, output_i)

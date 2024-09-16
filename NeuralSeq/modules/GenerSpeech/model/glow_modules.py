@@ -253,8 +253,7 @@ class InvConv(nn.Module):
             weight, dlogdet = self.get_weight(x.device, reverse)
             z = F.conv1d(x, weight)
             if logdet is not None:
-                logdet = logdet + dlogdet * x_len
-            return z, logdet
+                logdet += dlogdet * x_len
         else:
             if self.weight is None:
                 weight, dlogdet = self.get_weight(x.device, reverse)
@@ -262,8 +261,9 @@ class InvConv(nn.Module):
                 weight, dlogdet = self.weight, self.dlogdet
             z = F.conv1d(x, weight)
             if logdet is not None:
-                logdet = logdet - dlogdet * x_len
-            return z, logdet
+                logdet -= dlogdet * x_len
+
+        return z, logdet
 
     def store_inverse(self):
         self.weight, self.dlogdet = self.get_weight('cuda', reverse=True)
@@ -555,10 +555,7 @@ class Glow(nn.Module):
 
     def forward(self, x, x_mask=None, g=None, reverse=False, return_hiddens=False):
         logdet_tot = 0
-        if not reverse:
-            flows = self.flows
-        else:
-            flows = reversed(self.flows)
+        flows = self.flows if not reverse else reversed(self.flows)
         if return_hiddens:
             hs = []
         if self.n_sqz > 1:
@@ -575,9 +572,7 @@ class Glow(nn.Module):
             logdet_tot += logdet
         if self.n_sqz > 1:
             x, x_mask = unsqueeze(x, x_mask, self.n_sqz)
-        if return_hiddens:
-            return x, logdet_tot, hs
-        return x, logdet_tot
+        return (x, logdet_tot, hs) if return_hiddens else (x, logdet_tot)
 
     def store_inverse(self):
         def remove_weight_norm(m):
@@ -624,14 +619,14 @@ class GlowV2(nn.Module):
 
         self.flows = nn.ModuleList()
         in_channels = in_channels * 2
-        for l in range(n_split_blocks):
+        for _ in range(n_split_blocks):
             blocks = nn.ModuleList()
             self.flows.append(blocks)
             gin_channels = gin_channels * 2
             if gin_channels != 0 and share_cond_layers:
                 cond_layer = torch.nn.Conv1d(gin_channels, 2 * hidden_channels * n_layers, 1)
                 self.cond_layers.append(torch.nn.utils.weight_norm(cond_layer, name='weight'))
-            for b in range(n_blocks):
+            for _ in range(n_blocks):
                 blocks.append(ActNorm(channels=in_channels))
                 blocks.append(InvConvNear(channels=in_channels, n_split=n_split))
                 blocks.append(CouplingBlock(
@@ -659,10 +654,7 @@ class GlowV2(nn.Module):
                 g_ = None
                 if g is not None:
                     g, _ = squeeze(g)
-                    if self.share_cond_layers:
-                        g_ = self.cond_layers[i](g)
-                    else:
-                        g_ = g
+                    g_ = self.cond_layers[i](g) if self.share_cond_layers else g
                 for layer in blocks:
                     x, logdet = layer(x, x_mask=x_mask, g=g_, reverse=reverse)
                     if return_hiddens:
@@ -676,9 +668,7 @@ class GlowV2(nn.Module):
             if concat_zs:
                 zs = [z.reshape(x.shape[0], -1) for z in zs]
                 zs = torch.cat(zs, 1)  # [B, C*T]
-            if return_hiddens:
-                return zs, logdet_tot, hs
-            return zs, logdet_tot
+            return (zs, logdet_tot, hs) if return_hiddens else (zs, logdet_tot)
         else:
             flows = reversed(self.flows)
             if x is not None:
@@ -697,7 +687,7 @@ class GlowV2(nn.Module):
                 g = [None for _ in range(len(self.flows))]
             if x_mask is not None:
                 x_masks = []
-                for i in range(len(self.flows)):
+                for _ in range(len(self.flows)):
                     x_mask, _ = squeeze(x_mask)
                     x_masks.append(x_mask)
             else:

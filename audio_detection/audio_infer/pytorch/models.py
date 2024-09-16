@@ -207,7 +207,7 @@ class PVT(nn.Module):
         x = x.transpose(1, 3)
         x = self.bn0(x)
         x = x.transpose(1, 3)
-        
+
         if self.training:
             x = self.time_shift(x)
             x = self.spec_augmenter(x)
@@ -229,12 +229,10 @@ class PVT(nn.Module):
         clipwise_output = torch.flatten(x, 1)
         #print(framewise_output.shape)    #torch.Size([10, 100, 17])
         framewise_output = interpolate(framewise_output, interpolate_ratio)
-        #framewise_output = framewise_output[:,:1000,:]
-        #framewise_output = pad_framewise_output(framewise_output, frames_num)
-        output_dict = {'framewise_output': framewise_output, 
-            'clipwise_output': clipwise_output}
-            
-        return output_dict
+        return {
+            'framewise_output': framewise_output,
+            'clipwise_output': clipwise_output,
+        }
 
 class PVT2(nn.Module):
     def __init__(self, sample_rate, window_size, hop_size, mel_bins, fmin, 
@@ -304,7 +302,7 @@ class PVT2(nn.Module):
         x = x.transpose(1, 3)
         x = self.bn0(x)
         x = x.transpose(1, 3)
-        
+
         if self.training:
             #x = self.time_shift(x)
             x = self.spec_augmenter(x)
@@ -323,12 +321,10 @@ class PVT2(nn.Module):
         #clipwise_output = self.temp_pool(x, framewise_output).clamp(1e-7, 1.).squeeze(1)
         #print(framewise_output.shape)    #torch.Size([10, 100, 17])
         framewise_output = interpolate(framewise_output, interpolate_ratio)
-        #framewise_output = framewise_output[:,:1000,:]
-        #framewise_output = pad_framewise_output(framewise_output, frames_num)
-        output_dict = {'framewise_output': framewise_output, 
-            'clipwise_output': clipwise_output}
-            
-        return output_dict
+        return {
+            'framewise_output': framewise_output,
+            'clipwise_output': clipwise_output,
+        }
 
 class PVT_2layer(nn.Module):
     def __init__(self, sample_rate, window_size, hop_size, mel_bins, fmin, 
@@ -399,7 +395,7 @@ class PVT_2layer(nn.Module):
         x = x.transpose(1, 3)
         x = self.bn0(x)
         x = x.transpose(1, 3)
-        
+
         if self.training:
             x = self.time_shift(x)
             x = self.spec_augmenter(x)
@@ -421,12 +417,10 @@ class PVT_2layer(nn.Module):
         clipwise_output = torch.flatten(x, 1)
         #print(framewise_output.shape)    #torch.Size([10, 100, 17])
         framewise_output = interpolate(framewise_output, interpolate_ratio)
-        #framewise_output = framewise_output[:,:1000,:]
-        #framewise_output = pad_framewise_output(framewise_output, frames_num)
-        output_dict = {'framewise_output': framewise_output, 
-            'clipwise_output': clipwise_output}
-            
-        return output_dict
+        return {
+            'framewise_output': framewise_output,
+            'clipwise_output': clipwise_output,
+        }
 
 class PVT_lr(nn.Module):
     def __init__(self, sample_rate, window_size, hop_size, mel_bins, fmin, 
@@ -496,7 +490,7 @@ class PVT_lr(nn.Module):
         x = x.transpose(1, 3)
         x = self.bn0(x)
         x = x.transpose(1, 3)
-        
+
         if self.training:
             x = self.time_shift(x)
             x = self.spec_augmenter(x)
@@ -514,12 +508,10 @@ class PVT_lr(nn.Module):
         clipwise_output = self.temp_pool(x, framewise_output).clamp(1e-7, 1.).squeeze(1)
         #print(framewise_output.shape)    #torch.Size([10, 100, 17])
         framewise_output = interpolate(framewise_output, interpolate_ratio)
-        #framewise_output = framewise_output[:,:1000,:]
-        #framewise_output = pad_framewise_output(framewise_output, frames_num)
-        output_dict = {'framewise_output': framewise_output, 
-            'clipwise_output': clipwise_output}
-            
-        return output_dict
+        return {
+            'framewise_output': framewise_output,
+            'clipwise_output': clipwise_output,
+        }
 
 
 class PVT_nopretrain(nn.Module):
@@ -590,7 +582,7 @@ class PVT_nopretrain(nn.Module):
         x = x.transpose(1, 3)
         x = self.bn0(x)
         x = x.transpose(1, 3)
-        
+
         if self.training:
             x = self.time_shift(x)
             x = self.spec_augmenter(x)
@@ -609,11 +601,10 @@ class PVT_nopretrain(nn.Module):
         #print(framewise_output.shape)    #torch.Size([10, 100, 17])
         framewise_output = interpolate(framewise_output, interpolate_ratio)
         framewise_output = framewise_output[:,:1000,:]
-        #framewise_output = pad_framewise_output(framewise_output, frames_num)
-        output_dict = {'framewise_output': framewise_output, 
-            'clipwise_output': clipwise_output}
-            
-        return output_dict
+        return {
+            'framewise_output': framewise_output,
+            'clipwise_output': clipwise_output,
+        }
 
 
 class Mlp(nn.Module):
@@ -676,15 +667,14 @@ class Attention(nn.Module):
 
         self.linear = linear
         self.sr_ratio = sr_ratio
-        if not linear:
-            if sr_ratio > 1:
-                self.sr = nn.Conv2d(dim, dim, kernel_size=sr_ratio, stride=sr_ratio)
-                self.norm = nn.LayerNorm(dim)
-        else:
+        if linear:
             self.pool = nn.AdaptiveAvgPool2d(7)
             self.sr = nn.Conv2d(dim, dim, kernel_size=1, stride=1)
             self.norm = nn.LayerNorm(dim)
             self.act = nn.GELU()
+        elif sr_ratio > 1:
+            self.sr = nn.Conv2d(dim, dim, kernel_size=sr_ratio, stride=sr_ratio)
+            self.norm = nn.LayerNorm(dim)
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -706,20 +696,19 @@ class Attention(nn.Module):
         B, N, C = x.shape
         q = self.q(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
 
-        if not self.linear:
-            if self.sr_ratio > 1:
-                x_ = x.permute(0, 2, 1).reshape(B, C, H, W)
-                x_ = self.sr(x_).reshape(B, C, -1).permute(0, 2, 1)
-                x_ = self.norm(x_)
-                kv = self.kv(x_).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-            else:
-                kv = self.kv(x).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-        else:
+        if self.linear:
             x_ = x.permute(0, 2, 1).reshape(B, C, H, W)
             x_ = self.sr(self.pool(x_)).reshape(B, C, -1).permute(0, 2, 1)
             x_ = self.norm(x_)
             x_ = self.act(x_)
             kv = self.kv(x_).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        elif self.sr_ratio > 1:
+            x_ = x.permute(0, 2, 1).reshape(B, C, H, W)
+            x_ = self.sr(x_).reshape(B, C, -1).permute(0, 2, 1)
+            x_ = self.norm(x_)
+            kv = self.kv(x_).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        else:
+            kv = self.kv(x).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
         k, v = kv[0], kv[1]
 
         attn = (q @ k.transpose(-2, -1)) * self.scale

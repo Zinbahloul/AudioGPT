@@ -57,7 +57,7 @@ class GenerSpeech(FastSpeech2):
         # build post flow
         cond_hs = 80
         if hparams.get('use_txt_cond', True):
-            cond_hs = cond_hs + hparams['hidden_size']
+            cond_hs += hparams['hidden_size']
 
         cond_hs = cond_hs + hparams['hidden_size'] * 3  # for emo, spk embedding and prosody embedding
         self.post_flow = Glow(

@@ -51,8 +51,7 @@ class BaseTTSInfer:
 
     def run_vocoder(self, c):
         c = c.transpose(2, 1)
-        y = self.vocoder(c)[:, 0]
-        return y
+        return self.vocoder(c)[:, 0]
 
     def preprocess_input(self, inp):
         raise NotImplementedError

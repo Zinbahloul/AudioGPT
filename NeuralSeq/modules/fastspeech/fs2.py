@@ -73,8 +73,7 @@ class FastSpeech2(nn.Module):
 
     def build_embedding(self, dictionary, embed_dim):
         num_embeddings = len(dictionary)
-        emb = Embedding(num_embeddings, embed_dim, self.padding_idx)
-        return emb
+        return Embedding(num_embeddings, embed_dim, self.padding_idx)
 
     def forward(self, txt_tokens, mel2ph=None, spk_embed=None,
                 ref_mels=None, f0=None, uv=None, energy=None, skip_decoder=False,
@@ -194,9 +193,9 @@ class FastSpeech2(nn.Module):
             stats_out = self.cwt_stats_layers(encoder_out[:, 0, :])  # [B, 2]
             mean = ret['f0_mean'] = stats_out[:, 0]
             std = ret['f0_std'] = stats_out[:, 1]
-            cwt_spec = cwt_out[:, :, :10]
             if f0 is None:
                 std = std * hparams['cwt_std_scale']
+                cwt_spec = cwt_out[:, :, :10]
                 f0 = self.cwt2f0_norm(cwt_spec, mean, std, mel2ph)
                 if hparams['use_uv']:
                     assert cwt_out.shape[-1] == 11
@@ -229,8 +228,7 @@ class FastSpeech2(nn.Module):
         f0 = cwt2f0(cwt_spec, mean, std, hparams['cwt_scales'])
         f0 = torch.cat(
             [f0] + [f0[:, -1:]] * (mel2ph.shape[1] - f0.shape[1]), 1)
-        f0_norm = norm_f0(f0, None, hparams)
-        return f0_norm
+        return norm_f0(f0, None, hparams)
 
     def out2mel(self, out):
         return out

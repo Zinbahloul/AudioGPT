@@ -42,10 +42,9 @@ class FastSpeechDataset(BaseDataset):
         if prefix == 'test':
             if hparams['test_input_dir'] != '':
                 self.indexed_ds, self.sizes = self.load_test_inputs(hparams['test_input_dir'])
-            else:
-                if hparams['num_test_samples'] > 0:
-                    self.avail_idxs = list(range(hparams['num_test_samples'])) + hparams['test_ids']
-                    self.sizes = [self.sizes[i] for i in self.avail_idxs]
+            elif hparams['num_test_samples'] > 0:
+                self.avail_idxs = list(range(hparams['num_test_samples'])) + hparams['test_ids']
+                self.sizes = [self.sizes[i] for i in self.avail_idxs]
 
         if hparams['pitch_type'] == 'cwt':
             _, hparams['cwt_scales'] = get_lf0_cwt(np.ones(10))

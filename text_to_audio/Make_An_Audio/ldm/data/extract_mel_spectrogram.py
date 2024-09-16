@@ -30,12 +30,10 @@ class MelSpectrogram(object):
             spec = librosa.feature.inverse.mel_to_stft(
                 x, sr=self.sr, n_fft=self.nfft, fmin=self.fmin, fmax=self.fmax, power=self.spec_power
             )
-            wav = librosa.griffinlim(spec, hop_length=self.hoplen)
-            return wav
+            return librosa.griffinlim(spec, hop_length=self.hoplen)
         else:
             spec = np.abs(librosa.stft(x, n_fft=self.nfft, hop_length=self.hoplen)) ** self.spec_power
-            mel_spec = np.dot(self.mel_basis, spec)
-            return mel_spec
+            return np.dot(self.mel_basis, spec)
 
 class LowerThresh(object):
     def __init__(self, min_val, inverse=False):
@@ -43,10 +41,7 @@ class LowerThresh(object):
         self.inverse = inverse
 
     def __call__(self, x):
-        if self.inverse:
-            return x
-        else:
-            return np.maximum(self.min_val, x)
+        return x if self.inverse else np.maximum(self.min_val, x)
 
 class Add(object):
     def __init__(self, val, inverse=False):
@@ -54,10 +49,7 @@ class Add(object):
         self.val = val
 
     def __call__(self, x):
-        if self.inverse:
-            return x - self.val
-        else:
-            return x + self.val
+        return x - self.val if self.inverse else x + self.val
 
 class Subtract(Add):
     def __init__(self, val, inverse=False):
@@ -65,10 +57,7 @@ class Subtract(Add):
         self.val = val
 
     def __call__(self, x):
-        if self.inverse:
-            return x + self.val
-        else:
-            return x - self.val
+        return x + self.val if self.inverse else x - self.val
 
 class Multiply(object):
     def __init__(self, val, inverse=False) -> None:
@@ -76,10 +65,7 @@ class Multiply(object):
         self.inverse = inverse
 
     def __call__(self, x):
-        if self.inverse:
-            return x / self.val
-        else:
-            return x * self.val
+        return x / self.val if self.inverse else x * self.val
 
 class Divide(Multiply):
     def __init__(self, val, inverse=False):
@@ -87,20 +73,14 @@ class Divide(Multiply):
         self.val = val
 
     def __call__(self, x):
-        if self.inverse:
-            return x * self.val
-        else:
-            return x / self.val
+        return x * self.val if self.inverse else x / self.val
 
 class Log10(object):
     def __init__(self, inverse=False):
         self.inverse = inverse
 
     def __call__(self, x):
-        if self.inverse:
-            return 10 ** x
-        else:
-            return np.log10(x)
+        return 10 ** x if self.inverse else np.log10(x)
 
 class Clip(object):
     def __init__(self, min_val, max_val, inverse=False):
@@ -109,10 +89,7 @@ class Clip(object):
         self.inverse = inverse
 
     def __call__(self, x):
-        if self.inverse:
-            return x
-        else:
-            return np.clip(x, self.min_val, self.max_val)
+        return x if self.inverse else np.clip(x, self.min_val, self.max_val)
 
 class TrimSpec(object):
     def __init__(self, max_len, inverse=False):
@@ -120,10 +97,7 @@ class TrimSpec(object):
         self.inverse = inverse
 
     def __call__(self, x):
-        if self.inverse:
-            return x
-        else:
-            return x[:, :self.max_len]
+        return x if self.inverse else x[:, :self.max_len]
 
 class MaxNorm(object):
     def __init__(self, inverse=False):
@@ -131,10 +105,7 @@ class MaxNorm(object):
         self.eps = 1e-10
 
     def __call__(self, x):
-        if self.inverse:
-            return x
-        else:
-            return x / (x.max() + self.eps)
+        return x if self.inverse else x / (x.max() + self.eps)
 
 
 TRANSFORMS_16000 = torchvision.transforms.Compose([

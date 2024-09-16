@@ -170,7 +170,7 @@ class MelGANGenerator(torch.nn.Module):
     def apply_weight_norm(self):
         """Apply weight normalization module from all of the layers."""
         def _apply_weight_norm(m):
-            if isinstance(m, torch.nn.Conv1d) or isinstance(m, torch.nn.ConvTranspose1d):
+            if isinstance(m, (torch.nn.Conv1d, torch.nn.ConvTranspose1d)):
                 torch.nn.utils.weight_norm(m)
                 logging.debug(f"Weight norm is applied to {m}.")
 
@@ -184,7 +184,7 @@ class MelGANGenerator(torch.nn.Module):
 
         """
         def _reset_parameters(m):
-            if isinstance(m, torch.nn.Conv1d) or isinstance(m, torch.nn.ConvTranspose1d):
+            if isinstance(m, (torch.nn.Conv1d, torch.nn.ConvTranspose1d)):
                 m.weight.data.normal_(0.0, 0.02)
                 logging.debug(f"Reset parameters in {m}.")
 
@@ -406,7 +406,7 @@ class MelGANMultiScaleDiscriminator(torch.nn.Module):
     def apply_weight_norm(self):
         """Apply weight normalization module from all of the layers."""
         def _apply_weight_norm(m):
-            if isinstance(m, torch.nn.Conv1d) or isinstance(m, torch.nn.ConvTranspose1d):
+            if isinstance(m, (torch.nn.Conv1d, torch.nn.ConvTranspose1d)):
                 torch.nn.utils.weight_norm(m)
                 logging.debug(f"Weight norm is applied to {m}.")
 
@@ -420,7 +420,7 @@ class MelGANMultiScaleDiscriminator(torch.nn.Module):
 
         """
         def _reset_parameters(m):
-            if isinstance(m, torch.nn.Conv1d) or isinstance(m, torch.nn.ConvTranspose1d):
+            if isinstance(m, (torch.nn.Conv1d, torch.nn.ConvTranspose1d)):
                 m.weight.data.normal_(0.0, 0.02)
                 logging.debug(f"Reset parameters in {m}.")
 

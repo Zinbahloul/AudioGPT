@@ -40,24 +40,20 @@ class EmbeddingExtractor(object):
                     pbar.update()
 
         else:
-            dump = {}
-
             with tqdm(total=caption_df.shape[0], ascii=True) as pbar:
                 for idx, row in caption_df.iterrows():
                     key = row["key"]
                     caption = row["caption"]
                     value = np.array(model.encode([caption])).reshape(-1)
 
-                    if key not in embeddings.keys():
-                        embeddings[key] = [value]
-                    else:
+                    if key in embeddings:
                         embeddings[key].append(value)
 
+                    else:
+                        embeddings[key] = [value]
                     pbar.update()
-                
-            for key in embeddings:
-                dump[key] = np.stack(embeddings[key])
 
+            dump = {key: np.stack(embeddings[key]) for key in embeddings}
             embeddings = dump
 
         with open(output, "wb") as f:

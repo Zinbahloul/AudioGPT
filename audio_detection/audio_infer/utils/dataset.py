@@ -20,21 +20,21 @@ def split_unbalanced_csv_to_partial_csvs(args):
     
     unbalanced_csv_path = args.unbalanced_csv
     unbalanced_partial_csvs_dir = args.unbalanced_partial_csvs_dir
-    
+
     create_folder(unbalanced_partial_csvs_dir)
-    
+
     with open(unbalanced_csv_path, 'r') as f:
         lines = f.readlines()
 
     lines = lines[3:]   # Remove head info
     audios_num_per_file = 50000
-    
+
     files_num = int(np.ceil(len(lines) / float(audios_num_per_file)))
-    
+
     for r in range(files_num):
         lines_per_file = lines[r * audios_num_per_file : 
             (r + 1) * audios_num_per_file]
-        
+
         out_csv_path = os.path.join(unbalanced_partial_csvs_dir, 
             'unbalanced_train_segments_part{:02d}.csv'.format(r))
 
@@ -44,8 +44,8 @@ def split_unbalanced_csv_to_partial_csvs(args):
             f.write('empty\n')
             for line in lines_per_file:
                 f.write(line)
-        
-        print('Write out csv to {}'.format(out_csv_path))
+
+        print(f'Write out csv to {out_csv_path}')
 
 
 def download_wavs(args):
@@ -56,26 +56,26 @@ def download_wavs(args):
     csv_path = args.csv_path
     audios_dir = args.audios_dir
     mini_data = args.mini_data
-    
+
     if mini_data:
-        logs_dir = '_logs/download_dataset/{}'.format(get_filename(csv_path))
+        logs_dir = f'_logs/download_dataset/{get_filename(csv_path)}'
     else:
-        logs_dir = '_logs/download_dataset_minidata/{}'.format(get_filename(csv_path))
-    
+        logs_dir = f'_logs/download_dataset_minidata/{get_filename(csv_path)}'
+
     create_folder(audios_dir)
     create_folder(logs_dir)
     create_logging(logs_dir, filemode='w')
-    logging.info('Download log is saved to {}'.format(logs_dir))
+    logging.info(f'Download log is saved to {logs_dir}')
 
     # Read csv
     with open(csv_path, 'r') as f:
         lines = f.readlines()
-    
+
     lines = lines[3:]   # Remove csv head info
 
     if mini_data:
-        lines = lines[0 : 10]   # Download partial data for debug
-    
+        lines = lines[:10]
+
     download_time = time.time()
 
     # Download
@@ -85,41 +85,41 @@ def download_wavs(args):
         audio_id = items[0]
         start_time = float(items[1])
         end_time = float(items[2])
-        duration = end_time - start_time
-        
         logging.info('{} {} start_time: {:.1f}, end_time: {:.1f}'.format(
             n, audio_id, start_time, end_time))
-        
+
         # Download full video of whatever format
-        video_name = os.path.join(audios_dir, '_Y{}.%(ext)s'.format(audio_id))
-        os.system("youtube-dl --quiet -o '{}' -x https://www.youtube.com/watch?v={}"\
-            .format(video_name, audio_id))
+        video_name = os.path.join(audios_dir, f'_Y{audio_id}.%(ext)s')
+        os.system(
+            f"youtube-dl --quiet -o '{video_name}' -x https://www.youtube.com/watch?v={audio_id}"
+        )
 
-        video_paths = glob.glob(os.path.join(audios_dir, '_Y' + audio_id + '.*'))
-
-        # If download successful
-        if len(video_paths) > 0:
+        if video_paths := glob.glob(
+            os.path.join(audios_dir, f'_Y{audio_id}.*')
+        ):
             video_path = video_paths[0]     # Choose one video
 
             # Add 'Y' to the head because some video ids are started with '-'
             # which will cause problem
-            audio_path = os.path.join(audios_dir, 'Y' + audio_id + '.wav')
+            audio_path = os.path.join(audios_dir, f'Y{audio_id}.wav')
+
+            duration = end_time - start_time
 
             # Extract audio in wav format
             os.system("ffmpeg -loglevel panic -i {} -ac 1 -ar 32000 -ss {} -t 00:00:{} {} "\
                 .format(video_path, 
                 str(datetime.timedelta(seconds=start_time)), duration, 
                 audio_path))
-            
+
             # Remove downloaded video
-            os.system("rm {}".format(video_path))
-            
-            logging.info("Download and convert to {}".format(audio_path))
-                
+            os.system(f"rm {video_path}")
+
+            logging.info(f"Download and convert to {audio_path}")
+
     logging.info('Download finished! Time spent: {:.3f} s'.format(
         time.time() - download_time))
 
-    logging.info('Logs can be viewed in {}'.format(logs_dir))
+    logging.info(f'Logs can be viewed in {logs_dir}')
 
 
 def pack_waveforms_to_hdf5(args):
@@ -147,18 +147,18 @@ def pack_waveforms_to_hdf5(args):
 
     create_folder(os.path.dirname(waveforms_hdf5_path))
 
-    logs_dir = '_logs/pack_waveforms_to_hdf5/{}{}'.format(prefix, get_filename(csv_path))
+    logs_dir = f'_logs/pack_waveforms_to_hdf5/{prefix}{get_filename(csv_path)}'
     create_folder(logs_dir)
     create_logging(logs_dir, filemode='w')
-    logging.info('Write logs to {}'.format(logs_dir))
-    
+    logging.info(f'Write logs to {logs_dir}')
+
     # Read csv file
     meta_dict = read_metadata(csv_path, classes_num, id_to_ix)
 
     if mini_data:
         mini_num = 10
         for key in meta_dict.keys():
-            meta_dict[key] = meta_dict[key][0 : mini_num]
+            meta_dict[key] = meta_dict[key][:mini_num]
 
     audios_num = len(meta_dict['audio_name'])
 
@@ -176,7 +176,7 @@ def pack_waveforms_to_hdf5(args):
             audio_path = os.path.join(audios_dir, meta_dict['audio_name'][n])
 
             if os.path.isfile(audio_path):
-                logging.info('{} {}'.format(n, audio_path))
+                logging.info(f'{n} {audio_path}')
                 (audio, _) = librosa.core.load(audio_path, sr=sample_rate, mono=True)
                 audio = pad_or_truncate(audio, clip_samples)
 
@@ -184,9 +184,9 @@ def pack_waveforms_to_hdf5(args):
                 hf['waveform'][n] = float32_to_int16(audio)
                 hf['target'][n] = meta_dict['target'][n]
             else:
-                logging.info('{} File does not exist! {}'.format(n, audio_path))
+                logging.info(f'{n} File does not exist! {audio_path}')
 
-    logging.info('Write to {}'.format(waveforms_hdf5_path))
+    logging.info(f'Write to {waveforms_hdf5_path}')
     logging.info('Pack hdf5 time: {:.3f}'.format(time.time() - total_time))
           
 
